@@ -2,128 +2,133 @@
 // HAFA - src/bin/hafa-miner.rs — CONNECTED MINING CLIENT
 // ============================================================================
 
-use hafa::crypto::{KeyPair, hash_sha3_256};
-use std::io::{self, Write, BufRead, BufReader};
-use std::net::TcpStream;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, Instant};
+use hafa::blockchain::Block;
+use hafa::crypto::hash_sha3_256;
+use serde::{Deserialize, Serialize};
+use std::time::Instant;
 
-fn clear_screen() { print!("\x1B[2J\x1B[1;1H"); io::stdout().flush().unwrap(); }
-
-#[derive(Clone)]
-struct Stats {
-    hashrate: u64,
-    blocks: u64,
-    earnings: f64,
-    status: String,
+#[derive(Deserialize)]
+struct TaskResp {
+    last_hash: String,
+    difficulty: u32,
+    target_height: u64,
 }
 
-fn main() {
-    let keypair = KeyPair::generate();
-    let peer_id = keypair.address().pubkey_hex.clone();
-    let stats = Arc::new(std::sync::Mutex::new(Stats { hashrate: 0, blocks: 0, earnings: 0.0, status: "IDLE".into() }));
-    let stop = Arc::new(AtomicBool::new(false));
+#[derive(Serialize)]
+struct SubmitReq {
+    miner_addr: String,
+    nonce: u64,
+    cognitive_proof: String,
+}
 
-    clear_screen();
-    println!("🧠 HAFA MINER (Connected Mode)");
-    println!("   Peer ID: {}...", &peer_id[..16]);
-    println!("   Status: Connecting to Node...");
+#[derive(Deserialize)]
+struct SubmitResp {
+    success: bool,
+    block_index: Option<u64>,
+    reward: u64,
+    message: String,
+}
+
+#[tokio::main]
+async fn main() {
+    let client = reqwest::Client::new();
+    let node_url = "http://127.0.0.1:7476";
+    let miner_addr = "Miner_001";
+
+    println!("🧠 HAFA Connected Miner Started");
+    println!("   Node: {}", node_url);
+    println!("   Address: {}", miner_addr);
 
     loop {
-        // Try to connect
-        if let Ok(mut stream) = TcpStream::connect("127.0.0.1:7475") {
-            stream.set_read_timeout(Some(Duration::from_secs(300))).unwrap();
-            println!("   ✅ Connected to Node! Waiting for task...");
-            stats.lock().unwrap().status = "CONNECTED".into();
-            
-            let mut reader = BufReader::new(stream.try_clone().unwrap());
-            let mut line = String::new();
-            
-            if reader.read_line(&mut line).is_ok() {
-                if line.starts_with("TASK ") {
-                    let parts: Vec<&str> = line.trim().split_whitespace().collect();
-                    if parts.len() == 3 {
-                        let last_hash = parts[1];
-                        let difficulty: u32 = parts[2].parse().unwrap_or(1);
-                        println!("   🎯 Task received. Difficulty: {}", difficulty);
-                        stats.lock().unwrap().status = "MINING".into();
-                        
-                        // Mining Loop
-                        let start = Instant::now();
-                        let mut hashes = 0u64;
-                        let mut found = false;
-                        
-                        // Simple PoUCW: find nonce where hash(last_hash + nonce) has leading zeros
-                        let target = calculate_target(difficulty);
-                        for nonce in 0..u64::MAX {
-                            if stop.load(Ordering::Relaxed) { break; }
-                            
-                            let data = format!("{}{}", last_hash, nonce);
-                            let hash = hash_sha3_256(data.as_bytes());
-                            hashes += 1;
-                            
-                            // Check target (simplified check)
-                            let hash_bytes = hex::decode(&hash).unwrap_or_default();
-                            if hash_bytes.len() >= target.len() && &hash_bytes[..target.len()] <= &target[..] {
-                                // Found!
-                                let mut writer = stream.try_clone().unwrap();
-                                let msg = format!("SOLVE {}\n", nonce);
-                                writer.write_all(msg.as_bytes()).unwrap();
-                                
-                                let mut resp = String::new();
-                                if reader.read_line(&mut resp).is_ok() && resp.starts_with("OK ") {
-                                    let reward: f64 = resp[3..].trim().parse().unwrap_or(0.0);
-                                    let mut s = stats.lock().unwrap();
-                                    s.blocks += 1;
-                                    s.earnings += reward;
-                                    s.hashrate = hashes / start.elapsed().as_secs().max(1);
-                                    println!("    BLOCK FOUND! +{} HAFA", reward);
-                                } else {
-                                    println!("   ❌ Proof rejected by node.");
-                                }
-                                found = true;
-                                break;
-                            }
-                            
-                            // Update hashrate occasionally
-                            if hashes % 10000 == 0 {
-                                stats.lock().unwrap().hashrate = hashes / start.elapsed().as_secs().max(1);
+        let task: TaskResp = match client.get(format!("{}/task", node_url)).send().await {
+            Ok(resp) => match resp.json::<TaskResp>().await {
+                Ok(t) => t,
+                Err(_) => {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                    continue;
+                }
+            },
+            Err(_) => {
+                println!("   ⚠️ Node not reachable. Retrying...");
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                continue;
+            }
+        };
+
+        println!(
+            "📥 Task: Height #{}, Difficulty: {}",
+            task.target_height,
+            task.difficulty
+        );
+
+        let start = Instant::now();
+        let mut nonce = 0u64;
+        let target = Block::calculate_target(task.difficulty);
+
+        loop {
+            let data = format!("{}{}", task.last_hash, nonce);
+            let hash = hash_sha3_256(data.as_bytes());
+
+            let hash_bytes = match hex::decode(&hash) {
+                Ok(v) => v,
+                Err(_) => {
+                    nonce += 1;
+                    continue;
+                }
+            };
+
+            if hash_bytes.len() >= target.len()
+                && &hash_bytes[..target.len()] <= &target[..]
+            {
+                let req = SubmitReq {
+                    miner_addr: miner_addr.to_string(),
+                    nonce,
+                    cognitive_proof: "PoUCW_Real_Proof".to_string(),
+                };
+
+                match client
+                    .post(format!("{}/submit", node_url))
+                    .json(&req)
+                    .send()
+                    .await
+                {
+                    Ok(resp) => match resp.json::<SubmitResp>().await {
+                        Ok(result) => {
+                            if result.success {
+                                println!(
+                                    "✅ Block #{} mined! Reward: {} HAFA\n",
+                                    result.block_index.unwrap_or(0),
+                                    result.reward as f64 / 100_000_000.0
+                                );
+                            } else {
+                                println!("❌ Rejected: {}\n", result.message);
                             }
                         }
-                        if !found { stats.lock().unwrap().status = "IDLE".into(); }
-                    }
+                        Err(_) => println!("⚠️ Parse error\n"),
+                    },
+                    Err(_) => println!("⚠️ Submit failed\n"),
+                }
+
+                break;
+            }
+
+            nonce += 1;
+
+            if nonce % 50_000 == 0 {
+                let elapsed = start.elapsed().as_secs_f64();
+
+                if elapsed > 0.0 {
+                    let hashrate = nonce as f64 / elapsed;
+
+                    println!(
+                        "   ⚡ Hashing... nonce={}, hashrate={:.0} H/s",
+                        nonce,
+                        hashrate
+                    );
                 }
             }
-        } else {
-            println!("   ⚠️ Node not found. Retrying in 5s...");
-            thread::sleep(Duration::from_secs(5));
         }
-        
-        // UI Refresh
-        clear_screen();
-        let s = stats.lock().unwrap();
-        println!("🧠 HAFA MINER (Connected Mode)");
-        println!("   Peer ID: {}...", &peer_id[..16]);
-        println!("   ⚡ Hashrate: {} H/s", s.hashrate);
-        println!("   🧱 Blocks: {}", s.blocks);
-        println!("   💰 Earnings: {:.2} HAFA", s.earnings);
-        println!("   🔄 Status: {}", s.status);
-        println!("\n   [q] Quit");
-        
-        // Check for quit
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        if input.trim().to_lowercase() == "q" { break; }
-    }
-}
 
-fn calculate_target(difficulty: u32) -> Vec<u8> {
-    let mut target = vec![0xFFu8; 32];
-    let zero_bytes = (difficulty / 8) as usize;
-    let zero_bits = (difficulty % 8) as usize;
-    for i in 0..zero_bytes.min(32) { target[i] = 0x00; }
-    if zero_bytes < 32 { target[zero_bytes] = 0xFF << zero_bits; }
-    target
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
 }

@@ -11,6 +11,11 @@ use thiserror::Error;
 // PROTOCOL CONSTANTS (IMMUTABLE)
 // ============================================================================
 
+/// Target block time: 60 seconds (for difficulty adjustment)
+pub const TARGET_BLOCK_TIME_SECS: u64 = 600;
+
+/// Difficulty adjustment interval: Every 2016 blocks (~33 hours)
+pub const DIFFICULTY_ADJUSTMENT_INTERVAL: u64 = 2016;
 /// Total Supply: 210 Million HAFA (8 decimal precision)
 pub const MAX_SUPPLY: u64 = 210_000_000 * 100_000_000;
 
