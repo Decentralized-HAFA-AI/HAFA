@@ -1,5 +1,5 @@
 // ============================================================================
-// HAFA - src/blockchain.rs — DECENTRALIZED LEDGER & CONSENSUS
+// HAFA - src/blockchain.rs — DECENTRALIZED LEDGER & CONSENSUS (PERSISTENT)
 // ============================================================================
 
 use crate::config::{Config, MAX_SUPPLY, INITIAL_BLOCK_REWARD, HALVING_INTERVAL, FOUNDER_ROYALTY_PERCENT};
@@ -13,7 +13,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::fs;
 use chrono::Utc;
-// FIX: Added missing trait imports
 use hex::ToHex;
 use sha3::Digest;
 
@@ -87,6 +86,14 @@ pub struct Block {
     pub cognitive_proof: String,
     pub difficulty: u32,
     pub cumulative_work: u64,
+}
+
+// Serializable state for persistence
+#[derive(Serialize, Deserialize)]
+struct SerializableState {
+    chain: Vec<Block>,
+    total_minted: u64,
+    balance_cache: HashMap<String, u64>,
 }
 
 pub struct Blockchain {
@@ -178,7 +185,6 @@ impl Blockchain {
         let total_minted = Arc::new(RwLock::new(0));
         let balance_cache = Arc::new(RwLock::new(HashMap::new()));
 
-        // FIX: Clone storage_path before moving into struct
         let mut bc = Self {
             config: config.clone(),
             chain: chain.clone(),
@@ -190,8 +196,10 @@ impl Blockchain {
 
         if storage_path.exists() {
             bc.load_from_disk().await?;
+            println!("   💾 Loaded blockchain from disk. Height: {}", bc.get_chain_height().await);
         } else {
             bc.create_genesis_block().await?;
+            println!("   🆕 Created new genesis block.");
         }
         Ok(bc)
     }
@@ -264,13 +272,11 @@ impl Blockchain {
     }
 
     pub async fn mine_block(&self, miner_addr: &str, cognitive_proof: &str) -> Result<Block, BlockchainError> {
-        // Get transactions from pool
         let mut txs: Vec<Transaction> = {
             let mut pool = self.pending_pool.write().await;
             pool.drain(..).collect()
         };
 
-        // Calculate reward with halving
         let height = {
             let chain = self.chain.read().await;
             chain.len() as u64
@@ -278,7 +284,6 @@ impl Blockchain {
         let halvings = height / HALVING_INTERVAL;
         let reward = if halvings >= 64 { 0 } else { INITIAL_BLOCK_REWARD >> halvings };
 
-        // Process royalties - create new vector to avoid borrow issues
         let mut processed_txs = Vec::new();
         for tx in txs.drain(..) {
             if tx.tx_type == TransactionType::RevenueShare && tx.amount > 0 {
@@ -289,7 +294,6 @@ impl Blockchain {
                     tx_with_share.amount = tx_with_share.amount.saturating_sub(royalty);
                     processed_txs.push(tx_with_share);
                     
-                    // Create separate royalty transaction
                     let royalty_tx = Transaction {
                         id: hash_sha3_256(format!("royalty|{}", tx.id).as_bytes()),
                         from: tx.from.clone(),
@@ -310,7 +314,6 @@ impl Blockchain {
         }
         txs = processed_txs;
 
-        // Add miner reward
         let reward_tx = Transaction {
             id: hash_sha3_256(format!("reward|{}|{}", miner_addr, Utc::now().timestamp()).as_bytes()),
             from: "SYSTEM".into(),
@@ -325,7 +328,6 @@ impl Blockchain {
         };
         txs.push(reward_tx);
 
-        // Prepare new block - extract data before releasing lock
         let (prev_hash, last_index, last_difficulty, last_cumulative_work) = {
             let chain = self.chain.read().await;
             let last = chain.last().ok_or(BlockchainError::ConsensusError("Empty chain".into()))?;
@@ -346,7 +348,6 @@ impl Blockchain {
             cumulative_work: last_cumulative_work.saturating_add(1u64 << next_difficulty.min(63)),
         };
 
-        // PoW loop
         while !block.meets_difficulty(block.difficulty) {
             block.nonce += 1;
             block.hash = Block::calculate_hash(
@@ -355,7 +356,6 @@ impl Blockchain {
             );
         }
 
-        // Update state
         {
             let mut chain = self.chain.write().await;
             chain.push(block.clone());
@@ -399,12 +399,10 @@ impl Blockchain {
     }
 
     pub async fn get_balance(&self, addr: &str) -> Result<u64, BlockchainError> {
-        // Check cache first
         {
             let cache = self.balance_cache.read().await;
             if let Some(&bal) = cache.get(addr) { return Ok(bal); }
         }
-        // Recalculate from chain
         let mut balance: i64 = 0;
         let chain = self.chain.read().await;
         for block in chain.iter() {
@@ -429,7 +427,16 @@ impl Blockchain {
 
     async fn save_to_disk(&self) -> Result<(), BlockchainError> {
         let chain = self.chain.read().await;
-        let data = bincode::serialize(&*chain)
+        let total_minted = *self.total_minted.read().await;
+        let balance_cache = self.balance_cache.read().await.clone();
+        
+        let state = SerializableState {
+            chain: chain.clone(),
+            total_minted,
+            balance_cache,
+        };
+        
+        let data = bincode::serialize(&state)
             .map_err(|e| BlockchainError::StorageError(e.to_string()))?;
         let tmp = self.storage_path.with_extension("tmp");
         fs::write(&tmp, &data).map_err(|e| BlockchainError::StorageError(e.to_string()))?;
@@ -438,30 +445,59 @@ impl Blockchain {
         Ok(())
     }
 
+    // ✅ این تابع با قابلیت مهاجرت خودکار بازنویسی شده
     async fn load_from_disk(&mut self) -> Result<(), BlockchainError> {
         let data = fs::read(&self.storage_path)
             .map_err(|e| BlockchainError::StorageError(e.to_string()))?;
-        let chain: Vec<Block> = bincode::deserialize(&data)
-            .map_err(|e| BlockchainError::StorageError(e.to_string()))?;
-        *self.chain.write().await = chain;
-        self.rebuild_balance_cache().await;
-        Ok(())
-    }
-
-    async fn rebuild_balance_cache(&self) {
-        let mut cache = HashMap::new();
-        let chain = self.chain.read().await;
-        for block in chain.iter() {
-            for tx in &block.transactions {
-                if tx.from != "SYSTEM" {
-                    *cache.entry(tx.from.clone()).or_insert(0u64) = 
-                        cache.get(&tx.from).copied().unwrap_or(0).saturating_sub(tx.amount + tx.founder_share);
+        
+        // Try new format first
+        match bincode::deserialize::<SerializableState>(&data) {
+            Ok(state) => {
+                *self.chain.write().await = state.chain;
+                *self.total_minted.write().await = state.total_minted;
+                *self.balance_cache.write().await = state.balance_cache;
+                println!("   💾 Loaded blockchain from disk (new format).");
+                Ok(())
+            }
+            Err(_) => {
+                // Try legacy format (just Vec<Block>)
+                println!("   ⚠️  Old/corrupted state file detected. Migrating...");
+                match bincode::deserialize::<Vec<Block>>(&data) {
+                    Ok(chain) => {
+                        let mut total_minted = 0u64;
+                        let mut balance_cache = HashMap::new();
+                        
+                        for block in &chain {
+                            for tx in &block.transactions {
+                                if tx.tx_type == TransactionType::Reward && tx.from == "SYSTEM" {
+                                    total_minted = total_minted.saturating_add(tx.amount);
+                                }
+                                if tx.from != "SYSTEM" {
+                                    *balance_cache.entry(tx.from.clone()).or_insert(0u64) = 
+                                        balance_cache.get(&tx.from).copied().unwrap_or(0).saturating_sub(tx.amount + tx.founder_share);
+                                }
+                                *balance_cache.entry(tx.to.clone()).or_insert(0u64) = 
+                                    balance_cache.get(&tx.to).copied().unwrap_or(0).saturating_add(tx.amount);
+                            }
+                        }
+                        
+                        *self.chain.write().await = chain;
+                        *self.total_minted.write().await = total_minted;
+                        *self.balance_cache.write().await = balance_cache;
+                        
+                        self.save_to_disk().await?;
+                        println!("   ✅ Migration complete. Saved in new format.");
+                        Ok(())
+                    }
+                    Err(e) => {
+                        // Completely corrupted - delete and start fresh
+                        println!("   ❌ File completely corrupted. Deleting and starting fresh: {}", e);
+                        let _ = fs::remove_file(&self.storage_path);
+                        self.create_genesis_block().await
+                    }
                 }
-                *cache.entry(tx.to.clone()).or_insert(0u64) = 
-                    cache.get(&tx.to).copied().unwrap_or(0).saturating_add(tx.amount);
             }
         }
-        *self.balance_cache.write().await = cache;
     }
 
     pub async fn validate_chain(&self) -> Result<bool, BlockchainError> {
@@ -487,7 +523,6 @@ impl Blockchain {
             );
             if expected_hash != curr.hash { return Ok(false); }
             
-            // FIX: Added parentheses for cast comparison
             if (curr.timestamp as i64) < (prev.timestamp as i64) { return Ok(false); }
             if (curr.timestamp as i64) > (Utc::now().timestamp() + MAX_BLOCK_TIME_DRIFT_SECS) { return Ok(false); }
             
