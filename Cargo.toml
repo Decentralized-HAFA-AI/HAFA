@@ -31,8 +31,8 @@ chacha20poly1305 = { version = "0.10", features = ["std"] }
 
 # Network (Libp2p)
 libp2p = { version = "0.53", features = [
-    "macros",      # برای #[derive(NetworkBehaviour)]
-    "tokio",       # برای mdns::tokio
+    "macros",
+    "tokio",
     "tcp",
     "noise",
     "yamux",
@@ -41,6 +41,10 @@ libp2p = { version = "0.53", features = [
     "mdns",
     "serde",
 ] }
+
+# HTTP API (NEW!)
+axum = "0.7"
+tower-http = { version = "0.5", features = ["cors"] }
 
 # AI & Data (From Scratch)
 ndarray = "0.15"
@@ -56,9 +60,11 @@ thiserror = "1"
 anyhow = "1"
 dirs = "5"
 dashmap = "5"
+
 [[bin]]
 name = "gen_key"
 path = "gen_key.rs"
+
 [[bin]]
 name = "hafa-miner"
 path = "src/bin/hafa-miner.rs"
