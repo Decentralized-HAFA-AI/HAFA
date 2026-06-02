@@ -1,0 +1,250 @@
+// ============================================================================
+// HAFA - src/config.rs — SYSTEM CONFIGURATION & ECONOMIC PARAMETERS
+// ============================================================================
+
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::fs;
+use thiserror::Error;
+
+// ============================================================================
+// PROTOCOL CONSTANTS (IMMUTABLE)
+// ============================================================================
+
+/// Total Supply: 210 Million HAFA (8 decimal precision)
+pub const MAX_SUPPLY: u64 = 210_000_000 * 100_000_000;
+
+/// Initial Block Reward: 500 HAFA per block
+pub const INITIAL_BLOCK_REWARD: u64 = 500 * 100_000_000;
+
+/// Halving occurs every 210,000 blocks
+pub const HALVING_INTERVAL: u64 = 210_000;
+
+/// Founder Genesis Share: 5% of total supply
+pub const FOUNDER_GENESIS_PERCENT: f64 = 5.0;
+
+/// Founder Royalty: 2% of paid-client revenue transactions
+pub const FOUNDER_ROYALTY_PERCENT: f64 = 2.0;
+
+/// Vesting Schedule (seconds from genesis, cumulative unlocked satoshis)
+/// Year 0: 10% | Year 1: +30% | Year 2: +30% | Year 3: +30%
+pub const VESTING_SCHEDULE: [(u64, u64); 4] = [
+    (0,                                      1_050_000 * 100_000_000),
+    (365 * 24 * 60 * 60,                     4_200_000 * 100_000_000),
+    (2 * 365 * 24 * 60 * 60,                 7_350_000 * 100_000_000),
+    (3 * 365 * 24 * 60 * 60,                10_500_000 * 100_000_000),
+];
+
+// ============================================================================
+// ERROR HANDLING
+// ============================================================================
+
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("Genesis public key is missing or invalid")]
+    InvalidGenesisKey,
+    #[error("Configuration file is malformed: {0}")]
+    ParseError(String),
+    #[error("Storage directory creation failed: {0}")]
+    StorageError(String),
+    #[error("Validation failed: {0}")]
+    ValidationError(String),
+}
+
+// ============================================================================
+// CONFIGURATION STRUCTURES
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Config {
+    pub founder: FounderConfig,
+    pub storage: StorageConfig,
+    pub network: NetworkConfig,
+    pub learning: LearningConfig,
+    pub mining: MiningConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FounderConfig {
+    /// Hex-encoded Ed25519 public key (64 chars)
+    pub genesis_pubkey_hex: String,
+    pub vesting_enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StorageConfig {
+    pub data_dir: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkConfig {
+    pub p2p_port: u16,
+    pub bootstrap_nodes: Vec<String>,
+    pub enable_mdns: bool,
+    pub enable_kademlia: bool,
+    pub connection_timeout_secs: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LearningConfig {
+    /// Allow fetching data from external sources (IPFS, Web, RSS)
+    pub allow_internet_learning: bool,
+    /// Require epistemic validation before accepting external data
+    pub require_epistemic_validation: bool,
+    /// Minimum confidence score for internet-sourced data
+    pub min_confidence_threshold: f64,
+    /// If true, only data from explicitly allowlisted sources is accepted
+    pub trusted_sources_only: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MiningConfig {
+    pub enabled: bool,
+    pub cognitive_worker_threads: u32,
+    pub target_block_time_secs: u64,
+}
+
+// ============================================================================
+// IMPLEMENTATION
+// ============================================================================
+
+impl Config {
+    /// Load configuration from a TOML/JSON file
+    pub fn load(path: &PathBuf) -> Result<Self, ConfigError> {
+        let content = fs::read_to_string(path)
+            .map_err(|e| ConfigError::StorageError(e.to_string()))?;
+
+        let config: Config = toml::from_str(&content)
+            .or_else(|_| serde_json::from_str(&content))
+            .map_err(|e| ConfigError::ParseError(e.to_string()))?;
+
+        config.validate()?;
+        Ok(config)
+    }
+
+    /// Save current configuration to disk
+    pub fn save(&self, path: &PathBuf) -> Result<(), ConfigError> {
+        let content = toml::to_string_pretty(self)
+            .map_err(|e| ConfigError::ParseError(e.to_string()))?;
+        
+        fs::write(path, content)
+            .map_err(|e| ConfigError::StorageError(e.to_string()))
+    }
+
+    /// Validate critical parameters before startup
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        if self.founder.genesis_pubkey_hex.is_empty() 
+           || self.founder.genesis_pubkey_hex.len() != 64 
+           || !self.founder.genesis_pubkey_hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(ConfigError::InvalidGenesisKey);
+        }
+
+        if self.learning.min_confidence_threshold < 0.0 || self.learning.min_confidence_threshold > 1.0 {
+            return Err(ConfigError::ValidationError("min_confidence_threshold must be between 0.0 and 1.0".into()));
+        }
+
+        if self.network.connection_timeout_secs == 0 {
+            return Err(ConfigError::ValidationError("connection_timeout_secs must be greater than 0".into()));
+        }
+
+        Ok(())
+    }
+
+    /// Check if a given pubkey matches the genesis founder
+    pub fn is_founder_key(&self, pubkey_hex: &str) -> bool {
+        self.founder.genesis_pubkey_hex.eq_ignore_ascii_case(pubkey_hex)
+    }
+
+    /// Calculate unlocked founder amount based on current timestamp
+    pub fn founder_unlocked_amount(&self, current_timestamp_secs: u64) -> u64 {
+        if !self.founder.vesting_enabled {
+            return self.founder_genesis_amount();
+        }
+
+        let mut unlocked = 0u64;
+        for (unlock_time, cumulative_amount) in VESTING_SCHEDULE.iter() {
+            if current_timestamp_secs >= *unlock_time {
+                unlocked = *cumulative_amount;
+            } else {
+                break;
+            }
+        }
+        unlocked
+    }
+
+    /// Total genesis allocation for founder (5%)
+    pub fn founder_genesis_amount(&self) -> u64 {
+        (MAX_SUPPLY as f64 * (FOUNDER_GENESIS_PERCENT / 100.0)) as u64
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            founder: FounderConfig {
+genesis_pubkey_hex: "6b4719862983b9cd96e280b034124fc0dd52dfac330a6e74b1e5a14b6d282d06".into(),
+                vesting_enabled: true,
+            },
+            storage: StorageConfig {
+                data_dir: dirs::data_dir()
+                    .unwrap_or_else(|| PathBuf::from("./data"))
+                    .join("hafa"),
+            },
+            network: NetworkConfig {
+                p2p_port: 7474,
+                bootstrap_nodes: vec![],
+                enable_mdns: true,
+                enable_kademlia: true,
+                connection_timeout_secs: 30,
+            },
+            learning: LearningConfig {
+                allow_internet_learning: false,
+                require_epistemic_validation: true,
+                min_confidence_threshold: 0.85,
+                trusted_sources_only: true,
+            },
+            mining: MiningConfig {
+                enabled: false,
+                cognitive_worker_threads: 4,
+                target_block_time_secs: 600,
+            },
+        }
+    }
+}
+
+// ============================================================================
+// UNIT TESTS
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_config_validation() {
+        let mut cfg = Config::default();
+        cfg.founder.genesis_pubkey_hex = "a".repeat(64); // Valid hex placeholder
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn test_founder_key_matching() {
+        let cfg = Config::default();
+        let test_key = "b".repeat(64);
+        assert!(cfg.is_founder_key(&test_key));
+        assert!(!cfg.is_founder_key("c".repeat(64).as_str()));
+    }
+
+    #[test]
+    fn test_vesting_schedule() {
+        let cfg = Config::default();
+        // Year 0: 10%
+        assert_eq!(cfg.founder_unlocked_amount(0), 1_050_000 * 100_000_000);
+        // Year 1: 40%
+        assert_eq!(cfg.founder_unlocked_amount(365 * 24 * 60 * 60), 4_200_000 * 100_000_000);
+        // Year 2: 70%
+        assert_eq!(cfg.founder_unlocked_amount(2 * 365 * 24 * 60 * 60), 7_350_000 * 100_000_000);
+        // Year 3: 100%
+        assert_eq!(cfg.founder_unlocked_amount(3 * 365 * 24 * 60 * 60), 10_500_000 * 100_000_000);
+    }
+}

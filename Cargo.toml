@@ -1,0 +1,64 @@
+[package]
+name = "hafa"
+edition = "2021"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
+[dependencies]
+# Runtime & Async
+tokio = { version = "1", features = ["full"] }
+rayon = "1"
+futures = "0.3"
+
+# Serialization & Config
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+bincode = "1"
+
+# Cryptography
+ed25519-dalek = { version = "2", features = ["rand_core", "serde"] }
+sha3 = "0.10"
+sha2 = "0.10"
+hex = "0.4"
+rand = { version = "0.8", features = ["std", "std_rng"] }
+zeroize = { version = "1", features = ["derive"] }
+chacha20poly1305 = { version = "0.10", features = ["std"] }
+
+# Network (Libp2p)
+libp2p = { version = "0.53", features = [
+    "macros",      # برای #[derive(NetworkBehaviour)]
+    "tokio",       # برای mdns::tokio
+    "tcp",
+    "noise",
+    "yamux",
+    "gossipsub",
+    "kad",
+    "mdns",
+    "serde",
+] }
+
+# AI & Data (From Scratch)
+ndarray = "0.15"
+ndarray-rand = "0.14"
+tree-sitter = "0.20"
+tree-sitter-rust = "0.20"
+
+# Utilities
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1"
+anyhow = "1"
+dirs = "5"
+dashmap = "5"
+[[bin]]
+name = "gen_key"
+path = "gen_key.rs"
+[[bin]]
+name = "hafa-miner"
+path = "src/bin/hafa-miner.rs"
