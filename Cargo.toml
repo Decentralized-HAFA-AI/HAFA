@@ -1,7 +1,7 @@
 [package]
 name = "hafa"
 edition = "2021"
-
+default-run = "hafa"  
 [profile.release]
 opt-level = 3
 lto = "fat"
@@ -14,6 +14,7 @@ tokio = { version = "1", features = ["full"] }
 rayon = "1"
 futures = "0.3"
 reqwest = { version = "0.11", features = ["json"] }
+
 # Serialization & Config
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -42,12 +43,12 @@ libp2p = { version = "0.53", features = [
     "serde",
 ] }
 
-# HTTP API (NEW!)
+# HTTP API
 axum = "0.7"
 tower-http = { version = "0.5", features = ["cors"] }
 
 # AI & Data (From Scratch)
-ndarray = "0.15"
+ndarray = { version = "0.15", features = ["serde"] }  # ← اصلاح شد
 ndarray-rand = "0.14"
 tree-sitter = "0.20"
 tree-sitter-rust = "0.20"
@@ -61,9 +62,6 @@ anyhow = "1"
 dirs = "5"
 dashmap = "5"
 
-[[bin]]
-name = "gen_key"
-path = "gen_key.rs"
 
 [[bin]]
 name = "hafa-miner"
