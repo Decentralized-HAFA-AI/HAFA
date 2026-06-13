@@ -1,5 +1,5 @@
-// ============================================================================
-// HAFA - src/main.rs — GENESIS NODE WITH FULL AI API + AUTO-LEARNING
+﻿// ============================================================================
+// HAFA - src/main.rs â€” GENESIS NODE WITH FULL AI API + AUTO-LEARNING
 // ============================================================================
 //
 // Genesis node providing a comprehensive HTTP API for:
@@ -731,7 +731,7 @@ struct WalletDeleteResponse {
 
 #[tokio::main]
 async fn main() {
-    println!("🚀 HAFA Genesis Node Starting...");
+    println!("ًںڑ€ HAFA Genesis Node Starting...");
     println!("   Version: 5.1.0 - GPU Backend + Federated Learning + Web UI + Wallet\n");
     
     let config = Config::load_or_default();
@@ -747,15 +747,15 @@ async fn main() {
     // Initialize HAFA v3 Transformer Trainer (Legacy)
     let transformer_config = TransformerConfig::default();
     let trainer = Trainer::new(&transformer_config, 0.001, 20, 1000, 0.01, 8);
-    println!("   🧠 Transformer v3 initialized: {} parameters", 
+    println!("   ًں§  Transformer v3 initialized: {} parameters", 
              trainer.model.get_stats().total_parameters);
 
     // Initialize HAFA v4 Trainer (Production-Grade) with Backend
     let trainer_v4 = TrainerV4::new(&transformer_config, 0.00001, 20, 0, 0.0001, 4);
-    println!("   🧠 Transformer v4 initialized: {} parameters (AdamW + Real Accumulation)", 
+    println!("   ًں§  Transformer v4 initialized: {} parameters (AdamW + Real Accumulation)", 
              trainer_v4.model.get_stats().total_parameters);
-    println!("   ⚙️  V4 features: AdamW, L2 Gradient Clipping, Binary Checkpoint, Verifiable PoUCW");
-    println!("   🖥️  Backend: {} (GPU-ready architecture) ✨", trainer_v4.backend.name());
+    println!("   âڑ™ï¸ڈ  V4 features: AdamW, L2 Gradient Clipping, Binary Checkpoint, Verifiable PoUCW");
+    println!("   ًں–¥ï¸ڈ  Backend: {} (GPU-ready architecture) âœ¨", trainer_v4.backend.name());
 
     // Initialize Knowledge Graph with Persistent Storage
     let kg_storage_path = config.storage.data_dir.join("knowledge_graph.json");
@@ -763,11 +763,11 @@ async fn main() {
     
     let initial_kg = match kg_storage.load() {
         Ok(kg) => {
-            println!("   🧠 Knowledge Graph loaded from disk (structured long-term memory) ✨");
+            println!("   ًں§  Knowledge Graph loaded from disk (structured long-term memory) âœ¨");
             kg
         }
         Err(e) => {
-            println!("   ⚠️  Failed to load KG from disk: {}, starting fresh", e);
+            println!("   âڑ ï¸ڈ  Failed to load KG from disk: {}, starting fresh", e);
             KnowledgeGraph::new()
         }
     };
@@ -776,7 +776,7 @@ async fn main() {
 
     // Initialize Reasoning Engine
     let reasoning: SharedReasoning = Arc::new(RwLock::new(ReasoningEngine::new()));
-    println!("   🧠 Reasoning Engine initialized (query & inference) ✨");
+    println!("   ًں§  Reasoning Engine initialized (query & inference) âœ¨");
 
     // Initialize Auto-Learning Engine with Knowledge Graph Integration
     let trainer_v4_shared: SharedTrainerV4 = Arc::new(Mutex::new(trainer_v4));
@@ -788,50 +788,50 @@ async fn main() {
     
     // Attach Knowledge Graph to Auto-Learning Engine
     auto_learning_engine.set_knowledge_graph(Arc::clone(&knowledge_graph));
-    println!("   🔗 Knowledge Graph integrated with Auto-Learning Engine ✨");
+    println!("   ًں”— Knowledge Graph integrated with Auto-Learning Engine âœ¨");
     
     let auto_learning: SharedAutoLearning = Arc::new(RwLock::new(auto_learning_engine));
-    println!("   🤖 Auto-Learning Engine initialized (self-evolving AI) ✨");
+    println!("   ًں¤– Auto-Learning Engine initialized (self-evolving AI) âœ¨");
 
     let (tx_tx, _) = mpsc::channel(100);
     let (block_tx, _) = mpsc::channel(100);
     match NetworkEngine::new(&config, tx_tx, block_tx).await {
-        Ok(_engine) => println!("   🌐 Network Engine initialized (mock mode) ✨"),
-        Err(e) => println!("   ⚠️  Network Engine failed: {}", e),
+        Ok(_engine) => println!("   ًںŒگ Network Engine initialized (mock mode) âœ¨"),
+        Err(e) => println!("   âڑ ï¸ڈ  Network Engine failed: {}", e),
     }
 
     // Initialize Learning Network (Real P2P)
     let (learning_tx, learning_rx) = mpsc::channel(1000);
     let mut learning_network = match LearningNetwork::new(learning_tx).await {
         Ok(net) => {
-            println!("   🌐 Learning Network created (Peer ID: {})", net.local_peer_id());
+            println!("   ًںŒگ Learning Network created (Peer ID: {})", net.local_peer_id());
             net
         }
         Err(e) => {
-            println!("   ⚠️  Failed to create learning network: {}", e);
+            println!("   âڑ ï¸ڈ  Failed to create learning network: {}", e);
             return;
         }
     };
 
     // Start learning network on port 7477
     if let Err(e) = learning_network.start(config.network.p2p_port).await {
-        println!("   ⚠️  Failed to start learning network: {}", e);
+        println!("   âڑ ï¸ڈ  Failed to start learning network: {}", e);
     } else {
-        println!("   🌐 Learning Network started on port 7477 ✨");
+        println!("   ًںŒگ Learning Network started on port 7477 âœ¨");
     }
 
     let learning_network_shared: Option<SharedLearningNetwork> = Some(Arc::new(learning_network));
 
     // Initialize Federated Learning Pool
     let learning_pool: SharedLearningPool = Arc::new(RwLock::new(VecDeque::new()));
-    println!("   🌐 Federated Learning Pool initialized (HTTP-based sharing) ✨");
+    println!("   ًںŒگ Federated Learning Pool initialized (HTTP-based sharing) âœ¨");
 
     // Initialize Wallet Manager
     let wallet_path = config.storage.data_dir.join("wallets.json");
     let wallet_manager: SharedWalletManager = Arc::new(Mutex::new(WalletManager::new(wallet_path)));
-    println!("   💼 Wallet Manager initialized (Ed25519 + ChaCha20 encryption) ✨");
+    println!("   ًں’¼ Wallet Manager initialized (Ed25519 + ChaCha20 encryption) âœ¨");
 
-    println!("   🎨 Web UI Dashboard initialized (inline HTML/CSS/JS) ✨");
+    println!("   ًںژ¨ Web UI Dashboard initialized (inline HTML/CSS/JS) âœ¨");
 
     let state = AppState {
         config: config.clone(),
@@ -861,12 +861,12 @@ async fn main() {
             current_height,
         );
         engine.register_source(Box::new(bc_source));
-        println!("   🔗 Blockchain Data Source registered (Meta-Learning from consensus) ✨");
+        println!("   ًں”— Blockchain Data Source registered (Meta-Learning from consensus) âœ¨");
         
         // 2. Register GossipSub Data Source (Real P2P Learning)
         let gossip_source = GossipSubDataSource::new(learning_rx);
         engine.register_source(Box::new(gossip_source));
-        println!("   🌐 GossipSub Data Source registered (Real P2P learning via libp2p) ✨");
+        println!("   ًںŒگ GossipSub Data Source registered (Real P2P learning via libp2p) âœ¨");
     }
 
     // ========================================================================
@@ -876,7 +876,7 @@ async fn main() {
     let bg_auto_learning = Arc::clone(&state.auto_learning);
     let bg_pool = Arc::clone(&state.learning_pool);
     tokio::spawn(async move {
-        println!("   🔄 Background Auto-Learning started (polling every 60s) ✨");
+        println!("   ًں”„ Background Auto-Learning started (polling every 60s) âœ¨");
         
         // Wait 30 seconds before first poll (let the node stabilize)
         tokio::time::sleep(Duration::from_secs(30)).await;
@@ -904,7 +904,7 @@ async fn main() {
                 }
                 
                 if count > 0 {
-                    println!("   [FEDERATED] 🌐 Polled {} sample(s) from pool", count);
+                    println!("   [FEDERATED] ًںŒگ Polled {} sample(s) from pool", count);
                 }
             }
             
@@ -920,30 +920,30 @@ async fn main() {
                     (engine.buffer_size(), engine.should_learn())
                 };
                 
-                println!("   [BACKGROUND] 🧠 Polled {} new sample(s) | Buffer: {}", 
+                println!("   [BACKGROUND] ًں§  Polled {} new sample(s) | Buffer: {}", 
                          new_samples, buffer_size);
                 
                 // Auto-trigger learning if conditions are met
                 if should_learn {
-                    println!("   [BACKGROUND] 🚀 Conditions met! Auto-triggering learning cycle...");
+                    println!("   [BACKGROUND] ًںڑ€ Conditions met! Auto-triggering learning cycle...");
                     
                     let mut engine = bg_auto_learning.write().await;
                     match engine.trigger_learning() {
                         Some(proof) => {
-                            println!("   [BACKGROUND] ✅ Learning cycle complete!");
-                            println!("   [BACKGROUND]    📉 Loss: {:.4} → {:.4}", 
+                            println!("   [BACKGROUND] âœ… Learning cycle complete!");
+                            println!("   [BACKGROUND]    ًں“‰ Loss: {:.4} â†’ {:.4}", 
                                      proof.loss_before, proof.loss_after);
-                            println!("   [BACKGROUND]    ⭐ Quality: {:.4}", proof.quality_score());
-                            println!("   [BACKGROUND]    📊 Samples processed: {}", 
+                            println!("   [BACKGROUND]    â­گ Quality: {:.4}", proof.quality_score());
+                            println!("   [BACKGROUND]    ًں“ٹ Samples processed: {}", 
                                      proof.samples_processed);
-                            println!("   [BACKGROUND]    ⏱️  Duration: {}ms", proof.wall_time_ms);
+                            println!("   [BACKGROUND]    âڈ±ï¸ڈ  Duration: {}ms", proof.wall_time_ms);
                         }
                         None => {
-                            println!("   [BACKGROUND] ⚠️  Learning trigger returned None (unexpected)");
+                            println!("   [BACKGROUND] âڑ ï¸ڈ  Learning trigger returned None (unexpected)");
                         }
                     }
                 } else {
-                    println!("   [BACKGROUND] ⏳ Waiting for more samples before learning...");
+                    println!("   [BACKGROUND] âڈ³ Waiting for more samples before learning...");
                 }
             }
             
@@ -1024,9 +1024,9 @@ async fn main() {
         let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", config.network.http_port))
             .await
             .unwrap();
-        println!("   🌐 HTTP API started on http://127.0.0.1:7476");
-        println!("   🎨 Web UI Dashboard: http://127.0.0.1:7476/web ✨");
-        println!("   📡 Available endpoints:");
+        println!("   ًںŒگ HTTP API started on http://127.0.0.1:7476");
+        println!("   ًںژ¨ Web UI Dashboard: http://127.0.0.1:7476/web âœ¨");
+        println!("   ًں“، Available endpoints:");
         println!("      GET  /info              - Node information");
         println!("      GET  /height            - Blockchain height");
         println!("      GET  /balance/:address  - Account balance");
@@ -1040,51 +1040,51 @@ async fn main() {
         println!("      POST /generate-v3       - Generate text (Transformer v3)");
         println!("      POST /train-v3          - Train Transformer v3");
         println!("      POST /train-text-v3     - Train on raw text (v3 - legacy)");
-        println!("      POST /train-text-v4     - Train on raw text (v4 - AdamW + Verifiable Proof) ✨");
+        println!("      POST /train-text-v4     - Train on raw text (v4 - AdamW + Verifiable Proof) âœ¨");
         println!("      POST /save-model        - Save model weights to disk");
         println!("      POST /load-model        - Load model weights from disk");
         println!("      POST /ingest-directory  - Ingest directory");
-        println!("      POST /auto-learn/feed   - Feed sample to auto-learning engine 🤖");
-        println!("      POST /auto-learn/trigger- Trigger auto-learning cycle 🤖");
-        println!("      GET  /auto-learn/status - Auto-learning engine status 🤖");
-        println!("      GET  /auto-learn/stats  - Auto-learning statistics 🤖");
-        println!("      POST /auto-learn/poll-blockchain - Poll blockchain for meta-learning 🔗");
-        println!("      GET  /auto-learn/episodes      - List all learning episodes 📝");
-        println!("      GET  /auto-learn/episodes/stats - Episodic memory statistics 📊");
-        println!("      POST /debug/simulate-network - Simulate P2P network data 🌐");
-        println!("      GET  /knowledge/entities    - List all entities 🧠");
-        println!("      GET  /knowledge/relations   - List all relations 🔗");
-        println!("      GET  /knowledge/stats       - Knowledge graph statistics 📊");
-        println!("      POST /knowledge/entity      - Add an entity ➕");
-        println!("      POST /knowledge/relation    - Add a relation 🔗");
-        println!("      POST /knowledge/extract     - Extract knowledge from text 📝");
-        println!("      POST /knowledge/query       - Query knowledge graph 🧠");
-        println!("      POST /debug/benchmark-backend - Run backend benchmarks 🔬");
-        println!("      GET  /p2p/info              - P2P network info 🌐");
-        println!("      POST /p2p/connect           - Connect to peer manually 🌐");
-        println!("      POST /federated/share       - Share sample with network 🌐");
-        println!("      GET  /federated/poll        - Poll samples from network 🌐");
-        println!("      GET  /federated/stats       - Federated learning stats 🌐");
-        println!("      GET  /gpu/info              - GPU backend info 🎮");
-        println!("      GET  /web                   - Web UI Dashboard 🎨");
-        println!("      POST /wallet/create         - Create new wallet 💼");
-        println!("      POST /wallet/import         - Import wallet from passphrase 💼");
-        println!("      GET  /wallet/list           - List all wallets 💼");
-        println!("      GET  /wallet/:addr/info     - Wallet info + balance 💼");
-        println!("      POST /wallet/:addr/sign     - Sign transaction 💼");
-        println!("      POST /wallet/:addr/delete   - Delete wallet 💼");
-        println!("      🔄 Background Auto-Learning: polls every 60s ✨");
+        println!("      POST /auto-learn/feed   - Feed sample to auto-learning engine ًں¤–");
+        println!("      POST /auto-learn/trigger- Trigger auto-learning cycle ًں¤–");
+        println!("      GET  /auto-learn/status - Auto-learning engine status ًں¤–");
+        println!("      GET  /auto-learn/stats  - Auto-learning statistics ًں¤–");
+        println!("      POST /auto-learn/poll-blockchain - Poll blockchain for meta-learning ًں”—");
+        println!("      GET  /auto-learn/episodes      - List all learning episodes ًں“‌");
+        println!("      GET  /auto-learn/episodes/stats - Episodic memory statistics ًں“ٹ");
+        println!("      POST /debug/simulate-network - Simulate P2P network data ًںŒگ");
+        println!("      GET  /knowledge/entities    - List all entities ًں§ ");
+        println!("      GET  /knowledge/relations   - List all relations ًں”—");
+        println!("      GET  /knowledge/stats       - Knowledge graph statistics ًں“ٹ");
+        println!("      POST /knowledge/entity      - Add an entity â‍•");
+        println!("      POST /knowledge/relation    - Add a relation ًں”—");
+        println!("      POST /knowledge/extract     - Extract knowledge from text ًں“‌");
+        println!("      POST /knowledge/query       - Query knowledge graph ًں§ ");
+        println!("      POST /debug/benchmark-backend - Run backend benchmarks ًں”¬");
+        println!("      GET  /p2p/info              - P2P network info ًںŒگ");
+        println!("      POST /p2p/connect           - Connect to peer manually ًںŒگ");
+        println!("      POST /federated/share       - Share sample with network ًںŒگ");
+        println!("      GET  /federated/poll        - Poll samples from network ًںŒگ");
+        println!("      GET  /federated/stats       - Federated learning stats ًںŒگ");
+        println!("      GET  /gpu/info              - GPU backend info ًںژ®");
+        println!("      GET  /web                   - Web UI Dashboard ًںژ¨");
+        println!("      POST /wallet/create         - Create new wallet ًں’¼");
+        println!("      POST /wallet/import         - Import wallet from passphrase ًں’¼");
+        println!("      GET  /wallet/list           - List all wallets ًں’¼");
+        println!("      GET  /wallet/:addr/info     - Wallet info + balance ًں’¼");
+        println!("      POST /wallet/:addr/sign     - Sign transaction ًں’¼");
+        println!("      POST /wallet/:addr/delete   - Delete wallet ًں’¼");
+        println!("      ًں”„ Background Auto-Learning: polls every 60s âœ¨");
         println!();
         axum::serve(listener, app).await.unwrap();
     });
 
-    println!("   ✅ Node is alive. Press Ctrl+C to stop.\n");
-    println!("   🌟 HAFA is now FULLY AUTONOMOUS + DECENTRALIZED + KNOWLEDGEABLE + REASONING!\n");
-    println!("   🧠 It learns from blockchain, P2P network, builds structured knowledge, AND answers questions!\n");
-    println!("   🌐 NEW: Federated Learning via HTTP - Share and receive samples from other nodes!\n");
-    println!("   🎮 NEW: GPU Backend - Hardware acceleration for AI computations!\n");
-    println!("   🎨 NEW: Web UI Dashboard at http://127.0.0.1:7476/web ✨\n");
-    println!("   💼 NEW: Wallet System - Create, import, and manage wallets!\n");
+    println!("   âœ… Node is alive. Press Ctrl+C to stop.\n");
+    println!("   ًںŒں HAFA is now FULLY AUTONOMOUS + DECENTRALIZED + KNOWLEDGEABLE + REASONING!\n");
+    println!("   ًں§  It learns from blockchain, P2P network, builds structured knowledge, AND answers questions!\n");
+    println!("   ًںŒگ NEW: Federated Learning via HTTP - Share and receive samples from other nodes!\n");
+    println!("   ًںژ® NEW: GPU Backend - Hardware acceleration for AI computations!\n");
+    println!("   ًںژ¨ NEW: Web UI Dashboard at http://127.0.0.1:7476/web âœ¨\n");
+    println!("   ًں’¼ NEW: Wallet System - Create, import, and manage wallets!\n");
     
     // Save Knowledge Graph on shutdown
     let shutdown_kg = Arc::clone(&knowledge_graph);
@@ -1092,14 +1092,14 @@ async fn main() {
     
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.expect("Failed to listen for ctrl+c");
-        println!("\n   🛑 Shutting down...");
+        println!("\n   ًں›‘ Shutting down...");
         
         // Save KG before exit
         let kg = shutdown_kg.read().await;
         if let Err(e) = shutdown_storage.save(&kg) {
-            eprintln!("   ❌ Failed to save KG: {}", e);
+            eprintln!("   â‌Œ Failed to save KG: {}", e);
         } else {
-            println!("   ✅ Knowledge Graph saved successfully");
+            println!("   âœ… Knowledge Graph saved successfully");
         }
         
         std::process::exit(0);
@@ -1543,7 +1543,7 @@ async fn train_text_v4(State(state): State<AppState>, Json(payload): Json<TrainT
                 samples_processed: proof.samples_processed,
                 wall_time_ms: proof.wall_time_ms,
                 message: format!(
-                    "V4 Training complete: {} samples in {}ms | Model hash: {} → {}",
+                    "V4 Training complete: {} samples in {}ms | Model hash: {} â†’ {}",
                     proof.samples_processed,
                     proof.wall_time_ms,
                     hash_before_short,
@@ -1585,7 +1585,7 @@ async fn auto_learn_feed(
     if success {
         if let Some(network) = &state.learning_network {
             if let Err(e) = network.broadcast_sample(payload.text, payload.source, payload.confidence).await {
-                eprintln!("   ⚠️  Failed to broadcast sample: {}", e);
+                eprintln!("   âڑ ï¸ڈ  Failed to broadcast sample: {}", e);
             }
         }
     }
@@ -1608,7 +1608,7 @@ async fn auto_learn_trigger(State(state): State<AppState>) -> Json<AutoLearnTrig
         Some(proof) => Json(AutoLearnTriggerResponse {
             success: true,
             message: format!(
-                "Learning cycle completed in {}ms. Loss: {:.4} → {:.4}",
+                "Learning cycle completed in {}ms. Loss: {:.4} â†’ {:.4}",
                 proof.wall_time_ms,
                 proof.loss_before,
                 proof.loss_after
@@ -1855,7 +1855,7 @@ async fn knowledge_add_relation(
         success: relation_id.is_some(),
         relation_id: relation_id.clone(),
         message: if relation_id.is_some() {
-            format!("Relation '{}' → '{}' added/updated", payload.source, payload.target)
+            format!("Relation '{}' â†’ '{}' added/updated", payload.source, payload.target)
         } else {
             "Failed to add relation (entities not found)".to_string()
         },
@@ -2206,13 +2206,13 @@ async fn web_dashboard() -> Html<String> {
 <body>
     <div class="container">
         <header>
-            <h1>🚀 HAFA Dashboard</h1>
-            <p class="subtitle"><span class="status-dot"></span>Decentralized AI Blockchain • v5.1.0 • Auto-refresh every 5s</p>
+            <h1>ًںڑ€ HAFA Dashboard</h1>
+            <p class="subtitle"><span class="status-dot"></span>Decentralized AI Blockchain â€¢ v5.1.0 â€¢ Auto-refresh every 5s</p>
         </header>
 
         <div class="grid">
             <div class="card">
-                <h2>⛓️ Blockchain</h2>
+                <h2>â›“ï¸ڈ Blockchain</h2>
                 <div class="stat"><span>Height:</span> <strong id="height" class="loading">Loading...</strong></div>
                 <div class="stat"><span>Total Minted:</span> <strong id="minted" class="loading">Loading...</strong></div>
                 <div class="stat"><span>Reward:</span> <strong id="reward" class="loading">Loading...</strong></div>
@@ -2220,57 +2220,57 @@ async fn web_dashboard() -> Html<String> {
             </div>
 
             <div class="card">
-                <h2>🧠 AI Model</h2>
+                <h2>ًں§  AI Model</h2>
                 <div class="stat"><span>Parameters:</span> <strong id="params" class="loading">Loading...</strong></div>
                 <div class="stat"><span>Buffer Size:</span> <strong id="buffer" class="loading">Loading...</strong></div>
                 <div class="stat"><span>Is Learning:</span> <strong id="learning" class="loading">Loading...</strong></div>
             </div>
 
             <div class="card">
-                <h2>🎮 Compute Backend</h2>
+                <h2>ًںژ® Compute Backend</h2>
                 <div class="stat"><span>Backend:</span> <strong id="backend" class="loading">Loading...</strong></div>
                 <div class="stat"><span>Device:</span> <strong id="device" class="loading">Loading...</strong></div>
                 <div class="stat"><span>FP16 Support:</span> <strong id="fp16" class="loading">Loading...</strong></div>
             </div>
 
             <div class="card">
-                <h2>🤝 Federated Pool</h2>
+                <h2>ًں¤‌ Federated Pool</h2>
                 <div class="stat"><span>Pool Size:</span> <strong id="pool" class="loading">Loading...</strong></div>
                 <div class="stat"><span>Total Shared:</span> <strong id="shared" class="loading">Loading...</strong></div>
                 <div class="stat"><span>Oldest Item:</span> <strong id="oldest" class="loading">Loading...</strong></div>
             </div>
 
             <div class="card">
-                <h2>🧠 Knowledge Graph</h2>
+                <h2>ًں§  Knowledge Graph</h2>
                 <div class="stat"><span>Entities:</span> <strong id="entities" class="loading">Loading...</strong></div>
                 <div class="stat"><span>Relations:</span> <strong id="relations" class="loading">Loading...</strong></div>
             </div>
 
             <div class="card">
-                <h2>🌐 P2P Network</h2>
+                <h2>ًںŒگ P2P Network</h2>
                 <div class="stat"><span>Peer ID:</span> <strong id="peer" class="loading">Loading...</strong></div>
                 <div class="stat"><span>Running:</span> <strong id="running" class="loading">Loading...</strong></div>
             </div>
         </div>
 
         <div class="wallet-section">
-            <h2>💼 Wallet Management</h2>
+            <h2>ًں’¼ Wallet Management</h2>
             <div class="actions">
-                <button onclick="createWallet()">🔑 Create New Wallet</button>
-                <button onclick="listWallets()">📋 List Wallets</button>
+                <button onclick="createWallet()">ًں”‘ Create New Wallet</button>
+                <button onclick="listWallets()">ًں“‹ List Wallets</button>
                 <input type="text" id="wallet-address" class="wallet-input" placeholder="Wallet address for balance check" style="width: 300px;">
-                <button onclick="checkBalance()">💰 Check Balance</button>
+                <button onclick="checkBalance()">ًں’° Check Balance</button>
             </div>
             <div id="wallet-result" class="result"></div>
         </div>
 
         <div class="card action-card" style="margin-top: 2rem;">
-            <h2>⚡ Quick Actions</h2>
+            <h2>âڑ، Quick Actions</h2>
             <div class="actions">
-                <button onclick="refreshData()">🔄 Refresh Data</button>
-                <button onclick="testFederated()">📤 Test Federated Share</button>
-                <button onclick="trainModel()">🧠 Train Model (5 epochs)</button>
-                <button onclick="queryKnowledge()">🔍 Query Knowledge</button>
+                <button onclick="refreshData()">ًں”„ Refresh Data</button>
+                <button onclick="testFederated()">ًں“¤ Test Federated Share</button>
+                <button onclick="trainModel()">ًں§  Train Model (5 epochs)</button>
+                <button onclick="queryKnowledge()">ًں”چ Query Knowledge</button>
             </div>
             <div id="action-result" class="result"></div>
         </div>
@@ -2335,7 +2335,7 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('buffer').textContent = auto.buffer_size;
                 document.getElementById('buffer').className = 'success';
                 const l = document.getElementById('learning');
-                l.textContent = auto.is_learning ? '✅ Yes' : '❌ No';
+                l.textContent = auto.is_learning ? 'âœ… Yes' : 'â‌Œ No';
                 l.className = 'success';
             }
 
@@ -2346,7 +2346,7 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('device').textContent = gpu.device_name;
                 document.getElementById('device').className = 'success';
                 const f = document.getElementById('fp16');
-                f.textContent = gpu.supports_fp16 ? '✅ Yes' : '❌ No';
+                f.textContent = gpu.supports_fp16 ? 'âœ… Yes' : 'â‌Œ No';
                 f.className = 'success';
             }
 
@@ -2374,7 +2374,7 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('peer').textContent = p2p.peer_id.substring(0, 20) + '...';
                 document.getElementById('peer').className = 'success';
                 const r = document.getElementById('running');
-                r.textContent = p2p.is_running ? '✅ Yes' : '❌ No';
+                r.textContent = p2p.is_running ? 'âœ… Yes' : 'â‌Œ No';
                 r.className = 'success';
             }
         }

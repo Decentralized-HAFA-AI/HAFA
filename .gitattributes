@@ -1,0 +1,11 @@
+﻿# ============================================================================
+# GitHub Linguist Configuration
+# ============================================================================
+# Force all Rust source files to be counted strictly as Rust
+*.rs linguist-language=Rust
+
+# Exclude non-code files from language statistics
+*.ps1 linguist-vendored
+*.txt linguist-documentation
+*.md linguist-documentation
+Cargo.lock linguist-generated
