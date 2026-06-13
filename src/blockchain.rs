@@ -80,6 +80,7 @@ pub enum TransactionType {
     LearningReport,
     EvolutionProposal,
     GenesisVesting,
+    LearningSample,
 }
 
 // ============================================================================
@@ -396,6 +397,15 @@ pub enum BlockchainEvent {
     ModelCheckpoint { height: u64, model_hash: String },
     VestingReleased { amount: u64, remaining: u64 },
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LearningTransaction {
+    pub tx_id: String,
+    pub sample_text: String,
+    pub source: String,
+    pub confidence: f32,
+    pub sender_peer_id: String,
+    pub timestamp: u64,
+}
 
 // ============================================================================
 // TRANSACTION
@@ -592,7 +602,11 @@ impl Blockchain {
         }
         Ok(bc)
     }
-
+    /// Get a block by its height (index)
+    pub async fn get_block(&self, height: u64) -> Option<Block> {
+        let chain = self.chain.read().await;
+        chain.get(height as usize).cloned()
+    }
     /// Subscribe to blockchain events
     pub fn subscribe(&self) -> broadcast::Receiver<BlockchainEvent> {
         self.event_sender.subscribe()

@@ -16,9 +16,9 @@
 use crate::blockchain::{Block, BlockchainEvent, Transaction};
 use crate::config::Config;
 use libp2p::{
-    gossipsub, mdns, noise,
-    swarm::{NetworkBehaviour, SwarmEvent},
-    tcp, yamux, Multiaddr, PeerId, Swarm,
+    gossipsub, mdns,
+    swarm::NetworkBehaviour,
+    PeerId,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -26,16 +26,20 @@ use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc, RwLock};
-use tracing::{debug, error, info, warn};
-
+use tracing::{debug, info, warn};
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
+#[allow(dead_code)]
 const NETWORK_STATE_FILE: &str = "network_state.bin";
+#[allow(dead_code)]
 const PROTOCOL_ID: &str = "/hafa/1.0.0";
+#[allow(dead_code)]
 const TOPIC_TRANSACTIONS: &str = "hafa_tx";
+#[allow(dead_code)]
 const TOPIC_BLOCKS: &str = "hafa_block";
+#[allow(dead_code)]
 const MESSAGE_TTL_SECS: u64 = 300;
 const MAX_DUPLICATE_CACHE: usize = 10_000;
 const PEER_SCORE_DECAY: f64 = 0.001;
@@ -104,12 +108,12 @@ pub struct NetworkStats {
     pub banned_peers: u64,
 }
 
+#[allow(dead_code)]
 #[derive(NetworkBehaviour)]
 struct HAFABehaviour {
     gossipsub: gossipsub::Behaviour,
     mdns: mdns::tokio::Behaviour,
 }
-
 #[derive(Clone)]
 pub struct NetworkEngine {
     config: Config,

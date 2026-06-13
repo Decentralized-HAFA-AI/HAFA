@@ -1,3 +1,4 @@
+pub mod wallet;
 pub mod config;
 pub mod crypto;
 pub mod api;
@@ -7,3 +8,4 @@ pub mod learning;
 pub mod evolution;
 pub mod blockchain;
 pub mod network;
+pub mod learning_v3;

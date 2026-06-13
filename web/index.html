@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAFA v5.0 Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 HAFA Dashboard</h1>
+            <p class="subtitle">Decentralized AI Blockchain • v5.0.0</p>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h2>⛓️ Blockchain</h2>
+                <div class="stat"><span>Height:</span> <strong id="height">-</strong></div>
+                <div class="stat"><span>Total Minted:</span> <strong id="minted">-</strong></div>
+                <div class="stat"><span>Reward:</span> <strong id="reward">-</strong></div>
+            </div>
+
+            <div class="card">
+                <h2>🧠 AI Model</h2>
+                <div class="stat"><span>Parameters:</span> <strong id="params">-</strong></div>
+                <div class="stat"><span>Buffer Size:</span> <strong id="buffer">-</strong></div>
+                <div class="stat"><span>Is Learning:</span> <strong id="learning">-</strong></div>
+            </div>
+
+            <div class="card">
+                <h2>🎮 Compute Backend</h2>
+                <div class="stat"><span>Backend:</span> <strong id="backend">-</strong></div>
+                <div class="stat"><span>Device:</span> <strong id="device">-</strong></div>
+                <div class="stat"><span>FP16 Support:</span> <strong id="fp16">-</strong></div>
+            </div>
+
+            <div class="card">
+                <h2>🤝 Federated Pool</h2>
+                <div class="stat"><span>Pool Size:</span> <strong id="pool">-</strong></div>
+                <div class="stat"><span>Total Shared:</span> <strong id="shared">-</strong></div>
+            </div>
+        </div>
+
+        <div class="card action-card">
+            <h2>⚡ Quick Actions</h2>
+            <div class="actions">
+                <button onclick="refreshData()">🔄 Refresh Data</button>
+                <button onclick="testFederated()">📤 Test Federated Share</button>
+            </div>
+            <div id="action-result" class="result"></div>
+        </div>
+
+        <footer>
+            <p>HAFA - Horizon After Freedom Achieved</p>
+        </footer>
+    </div>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -5,6 +5,13 @@
 // Configuration system with external file support.
 // Loads from `hafa.toml` if available, otherwise uses defaults.
 //
+// Key Features:
+// - Immutable protocol constants (supply, halving, vesting)
+// - Configurable network ports (P2P + HTTP API)
+// - Epistemic learning controls
+// - Mining parameters
+// - Founder vesting schedule
+//
 // ============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -49,6 +56,12 @@ pub const VESTING_SCHEDULE: [(u64, u64); 4] = [
 /// Default genesis public key (can be overridden by config file)
 pub const DEFAULT_GENESIS_PUBKEY: &str = "6b4719862983b9cd96e280b034124fc0dd52dfac330a6e74b1e5a14b6d282d06";
 
+/// Default P2P port for libp2p learning network
+pub const DEFAULT_P2P_PORT: u16 = 7474;
+
+/// Default HTTP API port
+pub const DEFAULT_HTTP_PORT: u16 = 7476;
+
 // ============================================================================
 // ERROR HANDLING
 // ============================================================================
@@ -92,10 +105,17 @@ pub struct StorageConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {
+    /// P2P port for libp2p learning network (GossipSub + mDNS)
     pub p2p_port: u16,
+    /// HTTP API port for REST endpoints and Web UI
+    pub http_port: u16,
+    /// Bootstrap nodes for initial peer discovery
     pub bootstrap_nodes: Vec<String>,
+    /// Enable mDNS for local network peer discovery
     pub enable_mdns: bool,
+    /// Enable Kademlia DHT for global peer discovery
     pub enable_kademlia: bool,
+    /// Connection timeout in seconds
     pub connection_timeout_secs: u64,
 }
 
@@ -197,6 +217,13 @@ impl Config {
             ));
         }
 
+        // Validate ports are different to prevent conflicts
+        if self.network.p2p_port == self.network.http_port {
+            return Err(ConfigError::ValidationError(
+                "p2p_port and http_port must be different".into(),
+            ));
+        }
+
         Ok(())
     }
 
@@ -241,7 +268,8 @@ impl Default for Config {
                     .join("hafa"),
             },
             network: NetworkConfig {
-                p2p_port: 7474,
+                p2p_port: DEFAULT_P2P_PORT,
+                http_port: DEFAULT_HTTP_PORT,
                 bootstrap_nodes: vec![],
                 enable_mdns: true,
                 enable_kademlia: true,
@@ -279,28 +307,22 @@ mod tests {
     #[test]
     fn test_founder_key_matching() {
         let cfg = Config::default();
-        // Test with the actual default genesis key
         assert!(cfg.is_founder_key(DEFAULT_GENESIS_PUBKEY));
-        // Test with a different key
         assert!(!cfg.is_founder_key(&"a".repeat(64)));
     }
 
     #[test]
     fn test_vesting_schedule() {
         let cfg = Config::default();
-        // Year 0: 10%
         assert_eq!(cfg.founder_unlocked_amount(0), 1_050_000 * 100_000_000);
-        // Year 1: 40%
         assert_eq!(
             cfg.founder_unlocked_amount(365 * 24 * 60 * 60),
             4_200_000 * 100_000_000
         );
-        // Year 2: 70%
         assert_eq!(
             cfg.founder_unlocked_amount(2 * 365 * 24 * 60 * 60),
             7_350_000 * 100_000_000
         );
-        // Year 3: 100%
         assert_eq!(
             cfg.founder_unlocked_amount(3 * 365 * 24 * 60 * 60),
             10_500_000 * 100_000_000
@@ -324,17 +346,43 @@ mod tests {
     #[test]
     fn test_genesis_key_length_validation() {
         let mut cfg = Config::default();
-        cfg.founder.genesis_pubkey_hex = "a".repeat(63); // Too short
+        cfg.founder.genesis_pubkey_hex = "a".repeat(63);
         assert!(cfg.validate().is_err());
 
-        cfg.founder.genesis_pubkey_hex = "a".repeat(65); // Too long
+        cfg.founder.genesis_pubkey_hex = "a".repeat(65);
         assert!(cfg.validate().is_err());
     }
 
     #[test]
     fn test_genesis_key_hex_validation() {
         let mut cfg = Config::default();
-        cfg.founder.genesis_pubkey_hex = "g".repeat(64); // Not hex
+        cfg.founder.genesis_pubkey_hex = "g".repeat(64);
         assert!(cfg.validate().is_err());
+    }
+
+    #[test]
+    fn test_default_ports() {
+        let cfg = Config::default();
+        assert_eq!(cfg.network.p2p_port, DEFAULT_P2P_PORT);
+        assert_eq!(cfg.network.http_port, DEFAULT_HTTP_PORT);
+        assert_ne!(cfg.network.p2p_port, cfg.network.http_port);
+    }
+
+    #[test]
+    fn test_port_conflict_validation() {
+        let mut cfg = Config::default();
+        cfg.network.p2p_port = 7476;
+        cfg.network.http_port = 7476;
+        assert!(cfg.validate().is_err(), "Should reject same p2p and http ports");
+    }
+
+    #[test]
+    fn test_custom_ports() {
+        let mut cfg = Config::default();
+        cfg.network.p2p_port = 8477;
+        cfg.network.http_port = 8476;
+        assert!(cfg.validate().is_ok());
+        assert_eq!(cfg.network.p2p_port, 8477);
+        assert_eq!(cfg.network.http_port, 8476);
     }
 }

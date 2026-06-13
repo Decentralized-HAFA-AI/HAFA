@@ -271,6 +271,7 @@ impl EvolutionProposal {
 // ============================================================================
 
 pub struct EvolutionEngine {
+    #[allow(dead_code)]
     config: Config,
     constraints: EpistemicConstraints,
     proposals: Arc<DashMap<String, EvolutionProposal>>,

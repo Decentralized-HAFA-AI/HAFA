@@ -1,27 +1,47 @@
+# ============================================================================
+# HAFA - Cargo.toml
+# ============================================================================
+# Decentralized AI Blockchain with Proof of Useful Cognitive Work
+# ============================================================================
+
 [package]
 name = "hafa"
+version = "0.1.0"
 edition = "2021"
-default-run = "hafa"  
+default-run = "hafa"
+authors = ["HAFA Genesis Creator"]
+description = "Decentralized AI blockchain with native Transformer-based cognitive engine"
+license = "MIT"
+
+# ============================================================================
+# RELEASE PROFILE (Optimized for production)
+# ============================================================================
+
 [profile.release]
 opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"
+strip = true
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
 
 [dependencies]
-# Runtime & Async
+# --- Runtime & Async ---
 tokio = { version = "1", features = ["full"] }
 rayon = "1"
 futures = "0.3"
 reqwest = { version = "0.11", features = ["json"] }
 
-# Serialization & Config
+# --- Serialization & Config ---
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = "1.0"
 toml = "0.8"
 bincode = "1"
 
-# Cryptography
+# --- Cryptography ---
 ed25519-dalek = { version = "2", features = ["rand_core", "serde"] }
 sha3 = "0.10"
 sha2 = "0.10"
@@ -30,7 +50,7 @@ rand = { version = "0.8", features = ["std", "std_rng"] }
 zeroize = { version = "1", features = ["derive"] }
 chacha20poly1305 = { version = "0.10", features = ["std"] }
 
-# Network (Libp2p)
+# --- Network (Libp2p) ---
 libp2p = { version = "0.53", features = [
     "macros",
     "tokio",
@@ -43,17 +63,22 @@ libp2p = { version = "0.53", features = [
     "serde",
 ] }
 
-# HTTP API
+# --- HTTP API ---
 axum = "0.7"
-tower-http = { version = "0.5", features = ["cors"] }
+tower-http = { version = "0.5", features = ["cors", "fs"] }
 
-# AI & Data (From Scratch)
-ndarray = { version = "0.15", features = ["serde"] }  # ← اصلاح شد
+# --- AI & ML Engine (From Scratch) ---
+ndarray = { version = "0.15", features = ["serde"] }
 ndarray-rand = "0.14"
+wgpu = "0.19"
+bytemuck = { version = "1.14", features = ["derive"] }
 tree-sitter = "0.20"
 tree-sitter-rust = "0.20"
 
-# Utilities
+# --- System Monitoring (for CognitiveProof) ---
+sysinfo = "0.30"
+
+# --- Utilities ---
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 chrono = { version = "0.4", features = ["serde"] }
@@ -61,7 +86,16 @@ thiserror = "1"
 anyhow = "1"
 dirs = "5"
 dashmap = "5"
+async-trait = "0.1"
 
+
+# ============================================================================
+# BINARY TARGETS
+# ============================================================================
+
+[[bin]]
+name = "hafa"
+path = "src/main.rs"
 
 [[bin]]
 name = "hafa-miner"
