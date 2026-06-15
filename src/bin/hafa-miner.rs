@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // HAFA - src/bin/hafa-miner.rs — CONNECTED MINING CLIENT (REAL PoUCW)
 // ============================================================================
 //
@@ -45,10 +45,12 @@ struct SubmitReq {
 struct CognitiveProofReq {
     model_hash_before: String,
     model_hash_after: String,
+    dataset_commitment: String,
+    gradient_commitment: String,
     loss_before: f64,
     loss_after: f64,
-    experiences_processed: u32,
-    avg_confidence: f64,
+    ema_loss_after: f64,
+    samples_processed: u64,
     resources_used: ResourceUsageReq,
     training_duration_ms: u64,
 }
@@ -83,6 +85,11 @@ struct SubmitResp {
 // ============================================================================
 
 /// Result of real cognitive work
+///
+/// Note: `avg_confidence` is reserved for future quality-based reward calculations
+/// in the PoUCW protocol. It represents the average epistemic confidence of
+/// processed training samples.
+#[allow(dead_code)]
 struct RealCognitiveWorkResult {
     model_hash_before: String,
     model_hash_after: String,
@@ -136,6 +143,7 @@ fn perform_real_cognitive_work(
         ),
         metadata: None,
     };
+    
     // Ingest data (creates sliding window experiences)
     learner.ingest(&validated_data);
     let experiences_processed = learner.get_stats().buffer_size as u32;
@@ -166,7 +174,7 @@ fn perform_real_cognitive_work(
     let final_weights = learner.model.serialize_weights().unwrap_or_default();
     let model_hash_after = hash_sha3_256(&final_weights);
 
-    // Calculate average confidence
+    // Calculate average confidence (reserved for future quality-based rewards)
     let avg_confidence = 0.7 + (1.0 / (1.0 + difficulty as f64)) * 0.25;
 
     let training_duration_ms = start.elapsed().as_millis() as u64;
@@ -202,7 +210,7 @@ fn get_resource_usage() -> ResourceUsageReq {
 async fn main() {
     let client = reqwest::Client::new();
     let node_url = "http://127.0.0.1:7476";
-    let miner_addr = "Miner_001";
+    let miner_addr = "560d2b1d8a70010b4a65a4e05bcfe4efe0a73b713de1b98c8e20d5c02f6ec43b:c373f92d";
 
     println!("🧠 HAFA Connected Miner Started (REAL PoUCW)");
     println!("   Node: {}", node_url);
@@ -273,13 +281,25 @@ async fn main() {
 
             if hash_bytes.len() >= target.len() && &hash_bytes[..target.len()] <= &target[..] {
                 // 4. Build REAL CognitiveProof
+                // Generate verifiable commitments from model hashes
+                let dataset_commitment = format!(
+                    "dataset_{}",
+                    &cognitive_work.model_hash_before[..16.min(cognitive_work.model_hash_before.len())]
+                );
+                let gradient_commitment = format!(
+                    "grad_{}",
+                    &cognitive_work.model_hash_after[..16.min(cognitive_work.model_hash_after.len())]
+                );
+
                 let cognitive_proof = CognitiveProofReq {
                     model_hash_before: cognitive_work.model_hash_before.clone(),
                     model_hash_after: cognitive_work.model_hash_after.clone(),
+                    dataset_commitment,
+                    gradient_commitment,
                     loss_before: cognitive_work.loss_before,
                     loss_after: cognitive_work.loss_after,
-                    experiences_processed: cognitive_work.experiences_processed,
-                    avg_confidence: cognitive_work.avg_confidence,
+                    ema_loss_after: cognitive_work.loss_after,
+                    samples_processed: cognitive_work.experiences_processed as u64,
                     resources_used: get_resource_usage(),
                     training_duration_ms: cognitive_work.training_duration_ms,
                 };
@@ -343,7 +363,7 @@ async fn main() {
                     let hashrate = nonce as f64 / elapsed;
 
                     println!(
-                        "   ⚡  Hashing... nonce={}, hashrate={:.0} H/s",
+                        "   ⚙️  Hashing... nonce={}, hashrate={:.0} H/s",
                         nonce, hashrate
                     );
                 }

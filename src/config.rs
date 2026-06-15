@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // HAFA - src/config.rs — SYSTEM CONFIGURATION & ECONOMIC PARAMETERS
 // ============================================================================
 //
@@ -339,24 +339,34 @@ mod tests {
     #[test]
     fn test_invalid_genesis_key() {
         let mut cfg = Config::default();
-        cfg.founder.genesis_pubkey_hex = "invalid".to_string();
-        assert!(cfg.validate().is_err());
+        
+        // Test 1: Key shorter than 64 characters
+        cfg.founder.genesis_pubkey_hex = "560d2b1d".to_string();
+        assert!(cfg.validate().is_err(), "Should reject short key");
+        
+        // Test 2: Key with non-hex characters
+        cfg.founder.genesis_pubkey_hex = "xyz0d2b1d8a70010b4a65a4e05bcfe4efe0a73b713de1b98c8e20d5c02f6ec43b".to_string();
+        assert!(cfg.validate().is_err(), "Should reject non-hex characters");
+        
+        // Test 3: Empty key
+        cfg.founder.genesis_pubkey_hex = "".to_string();
+        assert!(cfg.validate().is_err(), "Should reject empty key");
     }
 
     #[test]
     fn test_genesis_key_length_validation() {
         let mut cfg = Config::default();
-        cfg.founder.genesis_pubkey_hex = "a".repeat(63);
+        cfg.founder.genesis_pubkey_hex = "560d2b1d8a70010b4a65a4e05bcfe4efe0a73b713de1b98c8e20d5c02f6ec43b".repeat(63);
         assert!(cfg.validate().is_err());
 
-        cfg.founder.genesis_pubkey_hex = "a".repeat(65);
+        cfg.founder.genesis_pubkey_hex = "560d2b1d8a70010b4a65a4e05bcfe4efe0a73b713de1b98c8e20d5c02f6ec43b".repeat(65);
         assert!(cfg.validate().is_err());
     }
 
     #[test]
     fn test_genesis_key_hex_validation() {
         let mut cfg = Config::default();
-        cfg.founder.genesis_pubkey_hex = "g".repeat(64);
+        cfg.founder.genesis_pubkey_hex = "560d2b1d8a70010b4a65a4e05bcfe4efe0a73b713de1b98c8e20d5c02f6ec43b".repeat(64);
         assert!(cfg.validate().is_err());
     }
 

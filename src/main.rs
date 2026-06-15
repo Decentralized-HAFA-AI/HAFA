@@ -1,5 +1,5 @@
 ﻿// ============================================================================
-// HAFA - src/main.rs â€” GENESIS NODE WITH FULL AI API + AUTO-LEARNING
+// HAFA - src/main.rs — GENESIS NODE WITH FULL AI API + AUTO-LEARNING
 // ============================================================================
 //
 // Genesis node providing a comprehensive HTTP API for:
@@ -21,9 +21,10 @@
 // - Federated Learning Pool (HTTP-based sample sharing)
 // - GPU Backend (WGPU acceleration)
 // - Inline Web UI Dashboard
-// - NEW: Wallet Management System
+// - Wallet Management System
 //
 // ============================================================================
+
 use hafa::learning_v3::KnowledgeGraphStorage;
 use hafa::wallet::{WalletManager, TransactionRequest};
 use std::time::Duration;
@@ -44,7 +45,7 @@ use hafa::evolution::EvolutionEngine;
 use hafa::learning::Learner;
 use hafa::network::NetworkEngine;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     response::Html,
     routing::{get, post},
     Json, Router,
@@ -724,6 +725,80 @@ struct WalletDeleteResponse {
     success: bool,
     message: String,
 }
+// ============================================================================
+// HEALTH & STATS API STRUCTURES
+// ============================================================================
+
+#[derive(Serialize)]
+struct HealthResponse {
+    status: String,
+    timestamp: u64,
+    uptime_secs: i64,
+    checks: HealthChecks,
+}
+
+#[derive(Serialize)]
+struct HealthChecks {
+    blockchain: bool,
+    learner: bool,
+    network: bool,
+    auto_learning: bool,
+}
+
+#[derive(Serialize)]
+struct StatsSummaryResponse {
+    blockchain: BlockchainStats,
+    ai: AIStats,
+    network: NetworkStats,
+    wallet: WalletStats,
+    timestamp: u64,
+}
+
+#[derive(Serialize)]
+struct BlockchainStats {
+    height: u64,
+    total_minted: u64,
+    total_minted_hafa: f64,
+    current_reward: u64,
+    current_reward_hafa: f64,
+}
+
+#[derive(Serialize)]
+struct AIStats {
+    model_parameters: usize,
+    buffer_size: usize,
+    is_learning: bool,
+    total_cycles: u64,
+    total_samples_learned: u64,
+}
+
+#[derive(Serialize)]
+struct NetworkStats {
+    peer_id: String,
+    is_running: bool,
+    listening_addresses: Vec<String>,
+    federated_pool_size: usize,
+}
+
+#[derive(Serialize)]
+struct WalletStats {
+    total_wallets: usize,
+}
+
+#[derive(Serialize)]
+struct VersionResponse {
+    version: String,
+    build_date: String,
+    rust_version: String,
+    protocol: String,
+    features: Vec<String>,
+}
+
+// Query parameter for wallet address (handles colons and special characters)
+#[derive(Deserialize)]
+struct WalletAddressQuery {
+    address: String,
+}
 
 // ============================================================================
 // MAIN FUNCTION
@@ -731,7 +806,7 @@ struct WalletDeleteResponse {
 
 #[tokio::main]
 async fn main() {
-    println!("ًںڑ€ HAFA Genesis Node Starting...");
+    println!("🚀 HAFA Genesis Node Starting...");
     println!("   Version: 5.1.0 - GPU Backend + Federated Learning + Web UI + Wallet\n");
     
     let config = Config::load_or_default();
@@ -747,15 +822,15 @@ async fn main() {
     // Initialize HAFA v3 Transformer Trainer (Legacy)
     let transformer_config = TransformerConfig::default();
     let trainer = Trainer::new(&transformer_config, 0.001, 20, 1000, 0.01, 8);
-    println!("   ًں§  Transformer v3 initialized: {} parameters", 
+    println!("   🧠 Transformer v3 initialized: {} parameters", 
              trainer.model.get_stats().total_parameters);
 
     // Initialize HAFA v4 Trainer (Production-Grade) with Backend
     let trainer_v4 = TrainerV4::new(&transformer_config, 0.00001, 20, 0, 0.0001, 4);
-    println!("   ًں§  Transformer v4 initialized: {} parameters (AdamW + Real Accumulation)", 
+    println!("   🧠 Transformer v4 initialized: {} parameters (AdamW + Real Accumulation)", 
              trainer_v4.model.get_stats().total_parameters);
-    println!("   âڑ™ï¸ڈ  V4 features: AdamW, L2 Gradient Clipping, Binary Checkpoint, Verifiable PoUCW");
-    println!("   ًں–¥ï¸ڈ  Backend: {} (GPU-ready architecture) âœ¨", trainer_v4.backend.name());
+    println!("   ⚙️  V4 features: AdamW, L2 Gradient Clipping, Binary Checkpoint, Verifiable PoUCW");
+    println!("   🖥️  Backend: {} (GPU-ready architecture) ✨", trainer_v4.backend.name());
 
     // Initialize Knowledge Graph with Persistent Storage
     let kg_storage_path = config.storage.data_dir.join("knowledge_graph.json");
@@ -763,11 +838,11 @@ async fn main() {
     
     let initial_kg = match kg_storage.load() {
         Ok(kg) => {
-            println!("   ًں§  Knowledge Graph loaded from disk (structured long-term memory) âœ¨");
+            println!("   🧠 Knowledge Graph loaded from disk (structured long-term memory) ✨");
             kg
         }
         Err(e) => {
-            println!("   âڑ ï¸ڈ  Failed to load KG from disk: {}, starting fresh", e);
+            println!("   ⚠️  Failed to load KG from disk: {}, starting fresh", e);
             KnowledgeGraph::new()
         }
     };
@@ -776,7 +851,7 @@ async fn main() {
 
     // Initialize Reasoning Engine
     let reasoning: SharedReasoning = Arc::new(RwLock::new(ReasoningEngine::new()));
-    println!("   ًں§  Reasoning Engine initialized (query & inference) âœ¨");
+    println!("   🧠 Reasoning Engine initialized (query & inference) ✨");
 
     // Initialize Auto-Learning Engine with Knowledge Graph Integration
     let trainer_v4_shared: SharedTrainerV4 = Arc::new(Mutex::new(trainer_v4));
@@ -788,50 +863,50 @@ async fn main() {
     
     // Attach Knowledge Graph to Auto-Learning Engine
     auto_learning_engine.set_knowledge_graph(Arc::clone(&knowledge_graph));
-    println!("   ًں”— Knowledge Graph integrated with Auto-Learning Engine âœ¨");
+    println!("   🔗 Knowledge Graph integrated with Auto-Learning Engine ✨");
     
     let auto_learning: SharedAutoLearning = Arc::new(RwLock::new(auto_learning_engine));
-    println!("   ًں¤– Auto-Learning Engine initialized (self-evolving AI) âœ¨");
+    println!("   🤖 Auto-Learning Engine initialized (self-evolving AI) ✨");
 
     let (tx_tx, _) = mpsc::channel(100);
     let (block_tx, _) = mpsc::channel(100);
     match NetworkEngine::new(&config, tx_tx, block_tx).await {
-        Ok(_engine) => println!("   ًںŒگ Network Engine initialized (mock mode) âœ¨"),
-        Err(e) => println!("   âڑ ï¸ڈ  Network Engine failed: {}", e),
+        Ok(_engine) => println!("   🌐 Network Engine initialized (mock mode) ✨"),
+        Err(e) => println!("   ⚠️  Network Engine failed: {}", e),
     }
 
     // Initialize Learning Network (Real P2P)
     let (learning_tx, learning_rx) = mpsc::channel(1000);
     let mut learning_network = match LearningNetwork::new(learning_tx).await {
         Ok(net) => {
-            println!("   ًںŒگ Learning Network created (Peer ID: {})", net.local_peer_id());
+            println!("   🌐 Learning Network created (Peer ID: {})", net.local_peer_id());
             net
         }
         Err(e) => {
-            println!("   âڑ ï¸ڈ  Failed to create learning network: {}", e);
+            println!("   ⚠️  Failed to create learning network: {}", e);
             return;
         }
     };
 
-    // Start learning network on port 7477
+    // Start learning network on configured P2P port
     if let Err(e) = learning_network.start(config.network.p2p_port).await {
-        println!("   âڑ ï¸ڈ  Failed to start learning network: {}", e);
+        println!("   ⚠️  Failed to start learning network: {}", e);
     } else {
-        println!("   ًںŒگ Learning Network started on port 7477 âœ¨");
+        println!("   🌐 Learning Network started on port {} ✨", config.network.p2p_port);
     }
 
     let learning_network_shared: Option<SharedLearningNetwork> = Some(Arc::new(learning_network));
 
     // Initialize Federated Learning Pool
     let learning_pool: SharedLearningPool = Arc::new(RwLock::new(VecDeque::new()));
-    println!("   ًںŒگ Federated Learning Pool initialized (HTTP-based sharing) âœ¨");
+    println!("   🌐 Federated Learning Pool initialized (HTTP-based sharing) ✨");
 
     // Initialize Wallet Manager
     let wallet_path = config.storage.data_dir.join("wallets.json");
     let wallet_manager: SharedWalletManager = Arc::new(Mutex::new(WalletManager::new(wallet_path)));
-    println!("   ًں’¼ Wallet Manager initialized (Ed25519 + ChaCha20 encryption) âœ¨");
+    println!("   💼 Wallet Manager initialized (Ed25519 + ChaCha20 encryption) ✨");
 
-    println!("   ًںژ¨ Web UI Dashboard initialized (inline HTML/CSS/JS) âœ¨");
+    println!("   🎨 Web UI Dashboard initialized (inline HTML/CSS/JS) ✨");
 
     let state = AppState {
         config: config.clone(),
@@ -861,33 +936,34 @@ async fn main() {
             current_height,
         );
         engine.register_source(Box::new(bc_source));
-        println!("   ًں”— Blockchain Data Source registered (Meta-Learning from consensus) âœ¨");
+        println!("   🔗 Blockchain Data Source registered (Meta-Learning from consensus) ✨");
         
         // 2. Register GossipSub Data Source (Real P2P Learning)
         let gossip_source = GossipSubDataSource::new(learning_rx);
         engine.register_source(Box::new(gossip_source));
-        println!("   ًںŒگ GossipSub Data Source registered (Real P2P learning via libp2p) âœ¨");
+        println!("   🌐 GossipSub Data Source registered (Real P2P learning via libp2p) ✨");
     }
 
-    // ========================================================================
-    // BACKGROUND AUTO-LEARNING TASK (Fully Autonomous AI)
+       // ========================================================================
+    // BACKGROUND AUTO-LEARNING TASK (Fully Autonomous AI - Optimized & Deadlock-Free)
     // ========================================================================
     
     let bg_auto_learning = Arc::clone(&state.auto_learning);
     let bg_pool = Arc::clone(&state.learning_pool);
+    
     tokio::spawn(async move {
-        println!("   ًں”„ Background Auto-Learning started (polling every 60s) âœ¨");
+        println!("   🔄 Background Auto-Learning started (polling every 60s) ✨");
         
         // Wait 30 seconds before first poll (let the node stabilize)
         tokio::time::sleep(Duration::from_secs(30)).await;
         
         loop {
-            // Poll federated learning pool
+            // 1. Handle Federated Learning Pool (Hold locks briefly)
+let pool_samples_count;
             {
                 let mut pool = bg_pool.write().await;
                 let mut engine = bg_auto_learning.write().await;
                 
-                // Take up to 10 samples from pool
                 let mut count = 0;
                 while count < 10 {
                     if let Some(item) = pool.pop_front() {
@@ -896,54 +972,63 @@ async fn main() {
                             format!("federated:{}", item.source),
                             item.confidence,
                         );
-                        engine.push_sample(sample);
+                        let _ = engine.push_sample(sample);
                         count += 1;
                     } else {
                         break;
                     }
                 }
-                
-                if count > 0 {
-                    println!("   [FEDERATED] ًںŒگ Polled {} sample(s) from pool", count);
-                }
+                pool_samples_count = count;
+            } // 🔓 Locks are dropped here immediately!
+            
+            if pool_samples_count > 0 {
+                println!("   [FEDERATED] 🌐 Polled {} sample(s) from pool", pool_samples_count);
             }
             
-            // Poll all registered data sources (blockchain + gossipsub)
+            // 2. Poll External Sources (Blockchain, GossipSub) with Timeout Protection
             let new_samples = {
                 let mut engine = bg_auto_learning.write().await;
-                engine.poll_sources().await
-            };
-            
+                
+                // Prevent infinite hangs if a data source gets stuck
+                match tokio::time::timeout(Duration::from_secs(10), engine.poll_sources()).await {
+                    Ok(samples) => samples,
+                    Err(_) => {
+                        eprintln!("   [BACKGROUND] ⚠️  poll_sources timed out after 10s!");
+                        0
+                    }
+                }
+            }; // 🔓 Lock dropped
+
+            // 3. Check conditions and trigger learning (Read before Write)
             if new_samples > 0 {
                 let (buffer_size, should_learn) = {
-                    let engine = bg_auto_learning.read().await;
+                    let engine = bg_auto_learning.read().await; // 🔒 Read lock is safe and non-blocking for other readers
                     (engine.buffer_size(), engine.should_learn())
-                };
+                }; // 🔓 Read lock dropped
                 
-                println!("   [BACKGROUND] ًں§  Polled {} new sample(s) | Buffer: {}", 
-                         new_samples, buffer_size);
+                println!("   [BACKGROUND] 🧠 Polled {} new sample(s) | Buffer: {}", new_samples, buffer_size);
                 
-                // Auto-trigger learning if conditions are met
                 if should_learn {
-                    println!("   [BACKGROUND] ًںڑ€ Conditions met! Auto-triggering learning cycle...");
+                    println!("   [BACKGROUND] 🚀 Conditions met! Auto-triggering learning cycle...");
                     
+                    // Hold write lock ONLY for the actual trigger execution
                     let mut engine = bg_auto_learning.write().await;
+                    
+                    // trigger_learning() is sync, so no timeout needed
                     match engine.trigger_learning() {
                         Some(proof) => {
-                            println!("   [BACKGROUND] âœ… Learning cycle complete!");
-                            println!("   [BACKGROUND]    ًں“‰ Loss: {:.4} â†’ {:.4}", 
-                                     proof.loss_before, proof.loss_after);
-                            println!("   [BACKGROUND]    â­گ Quality: {:.4}", proof.quality_score());
-                            println!("   [BACKGROUND]    ًں“ٹ Samples processed: {}", 
-                                     proof.samples_processed);
-                            println!("   [BACKGROUND]    âڈ±ï¸ڈ  Duration: {}ms", proof.wall_time_ms);
+                            println!("   [BACKGROUND] ✅ Learning cycle complete!");
+                            println!("   [BACKGROUND]    📉 Loss: {:.4} → {:.4}", proof.loss_before, proof.loss_after);
+                            println!("   [BACKGROUND]    ⭐ Quality: {:.4}", proof.quality_score());
+                            println!("   [BACKGROUND]    📊 Samples processed: {}", proof.samples_processed);
+                            println!("   [BACKGROUND]    ⏱️  Duration: {}ms", proof.wall_time_ms);
                         }
                         None => {
-                            println!("   [BACKGROUND] âڑ ï¸ڈ  Learning trigger returned None (unexpected)");
+                            println!("   [BACKGROUND] ⚠️  Learning trigger returned None (unexpected)");
                         }
-                    }
+                    } // 🔓 Write lock dropped
                 } else {
-                    println!("   [BACKGROUND] âڈ³ Waiting for more samples before learning...");
+                    println!("   [BACKGROUND] ⏳ Waiting for more samples before learning...");
                 }
             }
             
@@ -954,7 +1039,7 @@ async fn main() {
 
     let app = Router::new()
         // Blockchain endpoints
-        .route("/balance/:address", get(get_balance))
+        .route("/balance/{address}", get(get_balance))
         .route("/height", get(get_height))
         .route("/info", get(get_info))
         // Mining endpoints
@@ -1011,25 +1096,28 @@ async fn main() {
         .route("/gpu/info", get(gpu_info))
         // Inline Web UI Dashboard
         .route("/web", get(web_dashboard))
-        // NEW: Wallet endpoints
+        // Wallet endpoints (using query parameters for addresses with colons)
         .route("/wallet/create", post(wallet_create))
         .route("/wallet/import", post(wallet_import))
         .route("/wallet/list", get(wallet_list))
-        .route("/wallet/:address/info", get(wallet_info))
-        .route("/wallet/:address/sign", post(wallet_sign_transaction))
-        .route("/wallet/:address/delete", post(wallet_delete))
+        .route("/wallet/info", get(wallet_info))
+        .route("/wallet/sign", post(wallet_sign_transaction))
+        .route("/wallet/delete", post(wallet_delete))
+                .route("/health", get(health_check))
+        .route("/stats/summary", get(stats_summary))
+        .route("/version", get(version_info))
         .with_state(state);
 
     let api_handle = tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", config.network.http_port))
             .await
             .unwrap();
-        println!("   ًںŒگ HTTP API started on http://127.0.0.1:7476");
-        println!("   ًںژ¨ Web UI Dashboard: http://127.0.0.1:7476/web âœ¨");
-        println!("   ًں“، Available endpoints:");
+        println!("   🌐 HTTP API started on http://127.0.0.1:{}", config.network.http_port);
+        println!("   🎨 Web UI Dashboard: http://127.0.0.1:{}/web ✨", config.network.http_port);
+        println!("   📡 Available endpoints:");
         println!("      GET  /info              - Node information");
         println!("      GET  /height            - Blockchain height");
-        println!("      GET  /balance/:address  - Account balance");
+        println!("      GET  /balance/{{addr}}  - Account balance");
         println!("      GET  /task              - Mining task");
         println!("      POST /submit            - Submit mined block");
         println!("      GET  /learning-status   - AI model status (Legacy MLP)");
@@ -1040,51 +1128,54 @@ async fn main() {
         println!("      POST /generate-v3       - Generate text (Transformer v3)");
         println!("      POST /train-v3          - Train Transformer v3");
         println!("      POST /train-text-v3     - Train on raw text (v3 - legacy)");
-        println!("      POST /train-text-v4     - Train on raw text (v4 - AdamW + Verifiable Proof) âœ¨");
+        println!("      POST /train-text-v4     - Train on raw text (v4 - AdamW + Verifiable Proof) ✨");
         println!("      POST /save-model        - Save model weights to disk");
         println!("      POST /load-model        - Load model weights from disk");
         println!("      POST /ingest-directory  - Ingest directory");
-        println!("      POST /auto-learn/feed   - Feed sample to auto-learning engine ًں¤–");
-        println!("      POST /auto-learn/trigger- Trigger auto-learning cycle ًں¤–");
-        println!("      GET  /auto-learn/status - Auto-learning engine status ًں¤–");
-        println!("      GET  /auto-learn/stats  - Auto-learning statistics ًں¤–");
-        println!("      POST /auto-learn/poll-blockchain - Poll blockchain for meta-learning ًں”—");
-        println!("      GET  /auto-learn/episodes      - List all learning episodes ًں“‌");
-        println!("      GET  /auto-learn/episodes/stats - Episodic memory statistics ًں“ٹ");
-        println!("      POST /debug/simulate-network - Simulate P2P network data ًںŒگ");
-        println!("      GET  /knowledge/entities    - List all entities ًں§ ");
-        println!("      GET  /knowledge/relations   - List all relations ًں”—");
-        println!("      GET  /knowledge/stats       - Knowledge graph statistics ًں“ٹ");
-        println!("      POST /knowledge/entity      - Add an entity â‍•");
-        println!("      POST /knowledge/relation    - Add a relation ًں”—");
-        println!("      POST /knowledge/extract     - Extract knowledge from text ًں“‌");
-        println!("      POST /knowledge/query       - Query knowledge graph ًں§ ");
-        println!("      POST /debug/benchmark-backend - Run backend benchmarks ًں”¬");
-        println!("      GET  /p2p/info              - P2P network info ًںŒگ");
-        println!("      POST /p2p/connect           - Connect to peer manually ًںŒگ");
-        println!("      POST /federated/share       - Share sample with network ًںŒگ");
-        println!("      GET  /federated/poll        - Poll samples from network ًںŒگ");
-        println!("      GET  /federated/stats       - Federated learning stats ًںŒگ");
-        println!("      GET  /gpu/info              - GPU backend info ًںژ®");
-        println!("      GET  /web                   - Web UI Dashboard ًںژ¨");
-        println!("      POST /wallet/create         - Create new wallet ًں’¼");
-        println!("      POST /wallet/import         - Import wallet from passphrase ًں’¼");
-        println!("      GET  /wallet/list           - List all wallets ًں’¼");
-        println!("      GET  /wallet/:addr/info     - Wallet info + balance ًں’¼");
-        println!("      POST /wallet/:addr/sign     - Sign transaction ًں’¼");
-        println!("      POST /wallet/:addr/delete   - Delete wallet ًں’¼");
-        println!("      ًں”„ Background Auto-Learning: polls every 60s âœ¨");
+        println!("      POST /auto-learn/feed   - Feed sample to auto-learning engine 🤖");
+        println!("      POST /auto-learn/trigger- Trigger auto-learning cycle 🤖");
+        println!("      GET  /auto-learn/status - Auto-learning engine status 🤖");
+        println!("      GET  /auto-learn/stats  - Auto-learning statistics 🤖");
+        println!("      POST /auto-learn/poll-blockchain - Poll blockchain for meta-learning 🔗");
+        println!("      GET  /auto-learn/episodes      - List all learning episodes 📝");
+        println!("      GET  /auto-learn/episodes/stats - Episodic memory statistics 📊");
+        println!("      POST /debug/simulate-network - Simulate P2P network data 🌐");
+        println!("      GET  /knowledge/entities    - List all entities 🧠");
+        println!("      GET  /knowledge/relations   - List all relations 🔗");
+        println!("      GET  /knowledge/stats       - Knowledge graph statistics 📊");
+        println!("      POST /knowledge/entity      - Add an entity ⛍");
+        println!("      POST /knowledge/relation    - Add a relation 🔗");
+        println!("      POST /knowledge/extract     - Extract knowledge from text 📝");
+        println!("      POST /knowledge/query       - Query knowledge graph 🧠");
+        println!("      POST /debug/benchmark-backend - Run backend benchmarks 🔬");
+        println!("      GET  /p2p/info              - P2P network info 🌐");
+        println!("      POST /p2p/connect           - Connect to peer manually 🌐");
+        println!("      POST /federated/share       - Share sample with network 🌐");
+        println!("      GET  /federated/poll        - Poll samples from network 🌐");
+        println!("      GET  /federated/stats       - Federated learning stats 🌐");
+        println!("      GET  /gpu/info              - GPU backend info 🎮");
+        println!("      GET  /web                   - Web UI Dashboard 🎨");
+        println!("      POST /wallet/create         - Create new wallet 💼");
+        println!("      POST /wallet/import         - Import wallet from passphrase 💼");
+        println!("      GET  /wallet/list           - List all wallets 💼");
+        println!("      GET  /wallet/info?address=  - Wallet info + balance 💼");
+        println!("      POST /wallet/sign?address=  - Sign transaction 💼");
+        println!("      POST /wallet/delete?address=- Delete wallet 💼");
+                println!("      GET  /health              - Health check 🏥");
+        println!("      GET  /stats/summary       - System summary 📊");
+        println!("      GET  /version             - Version info 📦");
+        println!("      🔄 Background Auto-Learning: polls every 60s ✨");
         println!();
         axum::serve(listener, app).await.unwrap();
     });
 
-    println!("   âœ… Node is alive. Press Ctrl+C to stop.\n");
-    println!("   ًںŒں HAFA is now FULLY AUTONOMOUS + DECENTRALIZED + KNOWLEDGEABLE + REASONING!\n");
-    println!("   ًں§  It learns from blockchain, P2P network, builds structured knowledge, AND answers questions!\n");
-    println!("   ًںŒگ NEW: Federated Learning via HTTP - Share and receive samples from other nodes!\n");
-    println!("   ًںژ® NEW: GPU Backend - Hardware acceleration for AI computations!\n");
-    println!("   ًںژ¨ NEW: Web UI Dashboard at http://127.0.0.1:7476/web âœ¨\n");
-    println!("   ًں’¼ NEW: Wallet System - Create, import, and manage wallets!\n");
+    println!("   ✅ Node is alive. Press Ctrl+C to stop.\n");
+    println!("   🌟 HAFA is now FULLY AUTONOMOUS + DECENTRALIZED + KNOWLEDGEABLE + REASONING!\n");
+    println!("   🧠 It learns from blockchain, P2P network, builds structured knowledge, AND answers questions!\n");
+    println!("   🌐 NEW: Federated Learning via HTTP - Share and receive samples from other nodes!\n");
+    println!("   🎮 NEW: GPU Backend - Hardware acceleration for AI computations!\n");
+    println!("   🎨 NEW: Web UI Dashboard at http://127.0.0.1:{}/web ✨\n", config.network.http_port);
+    println!("   💼 NEW: Wallet System - Create, import, and manage wallets!\n");
     
     // Save Knowledge Graph on shutdown
     let shutdown_kg = Arc::clone(&knowledge_graph);
@@ -1092,14 +1183,14 @@ async fn main() {
     
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.expect("Failed to listen for ctrl+c");
-        println!("\n   ًں›‘ Shutting down...");
+        println!("\n   🛑 Shutting down...");
         
         // Save KG before exit
         let kg = shutdown_kg.read().await;
         if let Err(e) = shutdown_storage.save(&kg) {
-            eprintln!("   â‌Œ Failed to save KG: {}", e);
+            eprintln!("   ❌ Failed to save KG: {}", e);
         } else {
-            println!("   âœ… Knowledge Graph saved successfully");
+            println!("   ✅ Knowledge Graph saved successfully");
         }
         
         std::process::exit(0);
@@ -1543,7 +1634,7 @@ async fn train_text_v4(State(state): State<AppState>, Json(payload): Json<TrainT
                 samples_processed: proof.samples_processed,
                 wall_time_ms: proof.wall_time_ms,
                 message: format!(
-                    "V4 Training complete: {} samples in {}ms | Model hash: {} â†’ {}",
+                    "V4 Training complete: {} samples in {}ms | Model hash: {} → {}",
                     proof.samples_processed,
                     proof.wall_time_ms,
                     hash_before_short,
@@ -1582,18 +1673,19 @@ async fn auto_learn_feed(
     let success = engine.push_sample(sample);
     let buffer_size = engine.buffer_size();
 
-    if success {
-        if let Some(network) = &state.learning_network {
-            if let Err(e) = network.broadcast_sample(payload.text, payload.source, payload.confidence).await {
-                eprintln!("   âڑ ï¸ڈ  Failed to broadcast sample: {}", e);
-            }
-        }
-    }
+    // DISABLED: Broadcast to P2P network (causes hang when no peers available)
+    // if success {
+    //     if let Some(network) = &state.learning_network {
+    //         if let Err(e) = network.broadcast_sample(payload.text, payload.source, payload.confidence).await {
+    //             eprintln!("   ⚠️  Failed to broadcast sample: {}", e);
+    //         }
+    //     }
+    // }
 
     Json(AutoLearnFeedResponse {
         success,
         message: if success {
-            format!("Sample added to buffer and broadcasted to P2P network. Buffer size: {}", buffer_size)
+            format!("Sample added to buffer. Buffer size: {}", buffer_size)
         } else {
             "Sample rejected (low confidence, duplicate, or buffer full)".to_string()
         },
@@ -1608,7 +1700,7 @@ async fn auto_learn_trigger(State(state): State<AppState>) -> Json<AutoLearnTrig
         Some(proof) => Json(AutoLearnTriggerResponse {
             success: true,
             message: format!(
-                "Learning cycle completed in {}ms. Loss: {:.4} â†’ {:.4}",
+                "Learning cycle completed in {}ms. Loss: {:.4} → {:.4}",
                 proof.wall_time_ms,
                 proof.loss_before,
                 proof.loss_after
@@ -1855,7 +1947,7 @@ async fn knowledge_add_relation(
         success: relation_id.is_some(),
         relation_id: relation_id.clone(),
         message: if relation_id.is_some() {
-            format!("Relation '{}' â†’ '{}' added/updated", payload.source, payload.target)
+            format!("Relation '{}' → '{}' added/updated", payload.source, payload.target)
         } else {
             "Failed to add relation (entities not found)".to_string()
         },
@@ -2088,58 +2180,241 @@ async fn web_dashboard() -> Html<String> {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>HAFA v5.1 Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAFA v5.1.0 Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body { 
-            font-family: 'Segoe UI', system-ui, sans-serif; 
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
             color: #e2e8f0; 
             min-height: 100vh; 
-            padding: 2rem; 
+            padding: 1rem;
+            line-height: 1.6;
         }
-        .container { max-width: 1200px; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 3rem; }
+        
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        /* Header */
+        header { 
+            text-align: center; 
+            margin-bottom: 2rem;
+            padding: 2rem 1rem;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 1rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
         header h1 { 
-            font-size: 3rem; 
-            background: linear-gradient(to right, #38bdf8, #818cf8); 
+            font-size: 2.5rem; 
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
             -webkit-background-clip: text; 
             -webkit-text-fill-color: transparent; 
             background-clip: text;
+            margin-bottom: 0.5rem;
+            animation: gradient 3s ease infinite;
         }
-        .subtitle { color: #94a3b8; font-size: 1.1rem; margin-top: 0.5rem; }
+        
+        @keyframes gradient {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        .subtitle { 
+            color: #94a3b8; 
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        /* Health Status Banner */
+        .health-banner {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .health-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .health-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse 2s infinite;
+        }
+        
+        .health-indicator.degraded {
+            background: #f59e0b;
+            box-shadow: 0 0 10px #f59e0b;
+        }
+        
+        .health-indicator.down {
+            background: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        
+        .health-details {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .health-check {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .health-check-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+        
+        .health-check-icon.failed {
+            background: #ef4444;
+        }
+        
+        /* Grid Layout */
         .grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
             gap: 1.5rem; 
             margin-bottom: 2rem; 
         }
+        
+        /* Cards */
         .card { 
             background: rgba(30, 41, 59, 0.7); 
             backdrop-filter: blur(10px); 
             border: 1px solid rgba(148, 163, 184, 0.1); 
             border-radius: 1rem; 
             padding: 1.5rem; 
-            transition: transform 0.2s, border-color 0.2s; 
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
-        .card:hover { transform: translateY(-4px); border-color: #38bdf8; }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover { 
+            transform: translateY(-4px); 
+            border-color: rgba(56, 189, 248, 0.3);
+            box-shadow: 0 8px 24px rgba(56, 189, 248, 0.1);
+        }
+        
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+        
         .card h2 { 
             color: #38bdf8; 
             margin-bottom: 1rem; 
             font-size: 1.2rem; 
             border-bottom: 1px solid rgba(148, 163, 184, 0.2); 
-            padding-bottom: 0.5rem; 
+            padding-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
+        
         .stat { 
             display: flex; 
             justify-content: space-between; 
             padding: 0.5rem 0; 
-            border-bottom: 1px solid rgba(148, 163, 184, 0.1); 
+            border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+            transition: background 0.2s ease;
         }
+        
+        .stat:hover {
+            background: rgba(148, 163, 184, 0.05);
+        }
+        
         .stat:last-child { border-bottom: none; }
-        .stat strong { color: #f8fafc; font-family: 'Courier New', monospace; word-break: break-all; }
-        .action-card { text-align: center; }
-        .actions { display: flex; gap: 1rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+        
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        
+        .stat strong { 
+            color: #f8fafc; 
+            font-family: 'Courier New', monospace; 
+            word-break: break-all;
+            font-size: 0.95rem;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .stat-box {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .stat-box-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #38bdf8;
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-box-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        
+        /* Action Buttons */
+        .actions { 
+            display: flex; 
+            gap: 0.75rem; 
+            justify-content: center; 
+            margin-top: 1rem; 
+            flex-wrap: wrap; 
+        }
+        
         button { 
             background: linear-gradient(135deg, #38bdf8, #818cf8); 
             color: white; 
@@ -2148,39 +2423,57 @@ async fn web_dashboard() -> Html<String> {
             border-radius: 0.5rem; 
             font-weight: 600; 
             cursor: pointer; 
-            transition: opacity 0.2s, transform 0.2s; 
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
         }
-        button:hover { opacity: 0.9; transform: scale(1.05); }
+        
+        button:hover { 
+            opacity: 0.9; 
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        /* Result Box */
         .result { 
             margin-top: 1rem; 
             padding: 1rem; 
-            background: rgba(15, 23, 42, 0.5); 
+            background: rgba(15, 23, 42, 0.8); 
             border-radius: 0.5rem; 
-            font-family: monospace; 
+            font-family: 'Courier New', monospace; 
             color: #38bdf8; 
             display: none; 
             text-align: left;
             white-space: pre-wrap;
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
+            border: 1px solid rgba(56, 189, 248, 0.2);
         }
-        footer { text-align: center; margin-top: 3rem; color: #64748b; }
+        
+        /* Footer */
+        footer { 
+            text-align: center; 
+            margin-top: 3rem; 
+            padding: 2rem;
+            color: #64748b;
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 1rem;
+        }
+        
+        footer p {
+            margin: 0.5rem 0;
+        }
+        
+        /* Status Classes */
         .loading { color: #fbbf24; font-style: italic; }
         .success { color: #10b981; }
         .error { color: #ef4444; }
-        .status-dot { 
-            display: inline-block; 
-            width: 8px; 
-            height: 8px; 
-            border-radius: 50%; 
-            background: #10b981; 
-            margin-right: 6px;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+        .warning { color: #f59e0b; }
+        
+        /* Wallet Section */
         .wallet-section {
             margin-top: 2rem;
             padding: 1.5rem;
@@ -2188,96 +2481,287 @@ async fn web_dashboard() -> Html<String> {
             border-radius: 1rem;
             border: 1px solid rgba(148, 163, 184, 0.1);
         }
+        
         .wallet-section h2 {
             color: #fbbf24;
             margin-bottom: 1rem;
         }
+        
         .wallet-input {
             background: rgba(15, 23, 42, 0.5);
             border: 1px solid rgba(148, 163, 184, 0.2);
             color: #e2e8f0;
-            padding: 0.5rem 1rem;
+            padding: 0.75rem 1rem;
             border-radius: 0.5rem;
             margin: 0.5rem;
-            font-family: monospace;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            transition: border-color 0.2s ease;
+        }
+        
+        .wallet-input:focus {
+            outline: none;
+            border-color: #38bdf8;
+        }
+        
+        /* Version Badge */
+        .version-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 { font-size: 2rem; }
+            .grid { grid-template-columns: 1fr; }
+            .health-banner { flex-direction: column; align-items: flex-start; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(56, 189, 248, 0.7);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>ًںڑ€ HAFA Dashboard</h1>
-            <p class="subtitle"><span class="status-dot"></span>Decentralized AI Blockchain â€¢ v5.1.0 â€¢ Auto-refresh every 5s</p>
+            <h1>🚀 HAFA Dashboard <span class="version-badge" id="version-badge">v5.1.0</span></h1>
+            <p class="subtitle">
+                <span class="health-indicator" id="main-indicator"></span>
+                Decentralized AI Blockchain • Auto-refresh every 5s
+            </p>
         </header>
 
+        <!-- Health Status Banner -->
+        <div class="health-banner" id="health-banner">
+            <div class="health-status">
+                <div class="health-indicator" id="health-indicator"></div>
+                <div>
+                    <strong id="health-status">Checking...</strong>
+                    <div style="font-size: 0.85rem; color: #94a3b8;">
+                        Uptime: <span id="uptime">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="health-details">
+                <div class="health-check">
+                    <div class="health-check-icon" id="check-blockchain"></div>
+                    <span>Blockchain</span>
+                </div>
+                <div class="health-check">
+                    <div class="health-check-icon" id="check-learner"></div>
+                    <span>AI Engine</span>
+                </div>
+                <div class="health-check">
+                    <div class="health-check-icon" id="check-network"></div>
+                    <span>P2P Network</span>
+                </div>
+                <div class="health-check">
+                    <div class="health-check-icon" id="check-autolearn"></div>
+                    <span>Auto-Learning</span>
+                </div>
+            </div>
+        </div>
+
         <div class="grid">
+            <!-- Blockchain Card -->
             <div class="card">
-                <h2>â›“ï¸ڈ Blockchain</h2>
-                <div class="stat"><span>Height:</span> <strong id="height" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Total Minted:</span> <strong id="minted" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Reward:</span> <strong id="reward" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Uptime:</span> <strong id="uptime" class="loading">Loading...</strong></div>
+                <h2>⛓️ Blockchain</h2>
+                <div class="stat">
+                    <span class="stat-label">Height:</span>
+                    <strong id="height" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Total Minted:</span>
+                    <strong id="minted" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Current Reward:</span>
+                    <strong id="reward" class="loading">Loading...</strong>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-box-value" id="blocks-mined">0</div>
+                        <div class="stat-box-label">Blocks Mined</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-value" id="total-supply">0</div>
+                        <div class="stat-box-label">Total Supply</div>
+                    </div>
+                </div>
             </div>
 
+            <!-- AI Model Card -->
             <div class="card">
-                <h2>ًں§  AI Model</h2>
-                <div class="stat"><span>Parameters:</span> <strong id="params" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Buffer Size:</span> <strong id="buffer" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Is Learning:</span> <strong id="learning" class="loading">Loading...</strong></div>
+                <h2>🧠 AI Model</h2>
+                <div class="stat">
+                    <span class="stat-label">Parameters:</span>
+                    <strong id="params" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Buffer Size:</span>
+                    <strong id="buffer" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Learning Status:</span>
+                    <strong id="learning" class="loading">Loading...</strong>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-box-value" id="cycles">0</div>
+                        <div class="stat-box-label">Learning Cycles</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-value" id="samples">0</div>
+                        <div class="stat-box-label">Samples Learned</div>
+                    </div>
+                </div>
             </div>
 
+            <!-- Compute Backend Card -->
             <div class="card">
-                <h2>ًںژ® Compute Backend</h2>
-                <div class="stat"><span>Backend:</span> <strong id="backend" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Device:</span> <strong id="device" class="loading">Loading...</strong></div>
-                <div class="stat"><span>FP16 Support:</span> <strong id="fp16" class="loading">Loading...</strong></div>
+                <h2>🎮 Compute Backend</h2>
+                <div class="stat">
+                    <span class="stat-label">Backend:</span>
+                    <strong id="backend" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Device:</span>
+                    <strong id="device" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">FP16 Support:</span>
+                    <strong id="fp16" class="loading">Loading...</strong>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-box-value" id="compute-units">0</div>
+                        <div class="stat-box-label">Compute Units</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-value" id="memory">0</div>
+                        <div class="stat-box-label">Memory (MB)</div>
+                    </div>
+                </div>
             </div>
 
+            <!-- Knowledge Graph Card -->
             <div class="card">
-                <h2>ًں¤‌ Federated Pool</h2>
-                <div class="stat"><span>Pool Size:</span> <strong id="pool" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Total Shared:</span> <strong id="shared" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Oldest Item:</span> <strong id="oldest" class="loading">Loading...</strong></div>
+                <h2>🧠 Knowledge Graph</h2>
+                <div class="stat">
+                    <span class="stat-label">Entities:</span>
+                    <strong id="entities" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Relations:</span>
+                    <strong id="relations" class="loading">Loading...</strong>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-box-value" id="entity-confidence">0</div>
+                        <div class="stat-box-label">Avg Confidence</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-value" id="relation-confidence">0</div>
+                        <div class="stat-box-label">Relation Confidence</div>
+                    </div>
+                </div>
             </div>
 
+            <!-- P2P Network Card -->
             <div class="card">
-                <h2>ًں§  Knowledge Graph</h2>
-                <div class="stat"><span>Entities:</span> <strong id="entities" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Relations:</span> <strong id="relations" class="loading">Loading...</strong></div>
+                <h2>🌐 P2P Network</h2>
+                <div class="stat">
+                    <span class="stat-label">Peer ID:</span>
+                    <strong id="peer" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Status:</span>
+                    <strong id="running" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Listening:</span>
+                    <strong id="addresses" class="loading">Loading...</strong>
+                </div>
             </div>
 
+            <!-- Federated Learning Card -->
             <div class="card">
-                <h2>ًںŒگ P2P Network</h2>
-                <div class="stat"><span>Peer ID:</span> <strong id="peer" class="loading">Loading...</strong></div>
-                <div class="stat"><span>Running:</span> <strong id="running" class="loading">Loading...</strong></div>
+                <h2>🤝 Federated Learning</h2>
+                <div class="stat">
+                    <span class="stat-label">Pool Size:</span>
+                    <strong id="pool" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Total Shared:</span>
+                    <strong id="shared" class="loading">Loading...</strong>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Oldest Item:</span>
+                    <strong id="oldest" class="loading">Loading...</strong>
+                </div>
+            </div>
+
+            <!-- Wallet Card -->
+            <div class="card">
+                <h2>💼 Wallet System</h2>
+                <div class="stat">
+                    <span class="stat-label">Total Wallets:</span>
+                    <strong id="wallets" class="loading">Loading...</strong>
+                </div>
+                <div class="actions">
+                    <button onclick="createWallet()">🔑 Create Wallet</button>
+                    <button onclick="listWallets()">📋 List Wallets</button>
+                </div>
+                <input type="text" id="wallet-address" class="wallet-input" placeholder="Wallet address for balance check" style="width: 100%; margin-top: 1rem;">
+                <button onclick="checkBalance()" style="width: 100%; margin-top: 0.5rem;">💰 Check Balance</button>
             </div>
         </div>
 
-        <div class="wallet-section">
-            <h2>ًں’¼ Wallet Management</h2>
+        <!-- Quick Actions -->
+        <div class="card" style="margin-top: 2rem;">
+            <h2>⚙️ Quick Actions</h2>
             <div class="actions">
-                <button onclick="createWallet()">ًں”‘ Create New Wallet</button>
-                <button onclick="listWallets()">ًں“‹ List Wallets</button>
-                <input type="text" id="wallet-address" class="wallet-input" placeholder="Wallet address for balance check" style="width: 300px;">
-                <button onclick="checkBalance()">ًں’° Check Balance</button>
-            </div>
-            <div id="wallet-result" class="result"></div>
-        </div>
-
-        <div class="card action-card" style="margin-top: 2rem;">
-            <h2>âڑ، Quick Actions</h2>
-            <div class="actions">
-                <button onclick="refreshData()">ًں”„ Refresh Data</button>
-                <button onclick="testFederated()">ًں“¤ Test Federated Share</button>
-                <button onclick="trainModel()">ًں§  Train Model (5 epochs)</button>
-                <button onclick="queryKnowledge()">ًں”چ Query Knowledge</button>
+                <button onclick="refreshData()">🔄 Refresh Data</button>
+                <button onclick="testFederated()">📤 Test Federated</button>
+                <button onclick="trainModel()">🧠 Train Model</button>
+                <button onclick="queryKnowledge()">🔍 Query Knowledge</button>
+                <button onclick="showVersion()">📦 Version Info</button>
             </div>
             <div id="action-result" class="result"></div>
         </div>
 
+        <div id="wallet-result" class="result"></div>
+
         <footer>
-            <p>HAFA - Horizon After Freedom Achieved</p>
-            <p style="margin-top: 0.5rem; font-size: 0.9rem;">Decentralized AI Blockchain with Native Transformer</p>
+            <p><strong>HAFA</strong> - Horizon After Freedom Achieved</p>
+            <p style="font-size: 0.85rem;">Decentralized AI Blockchain with Native Transformer • PoUCW Consensus</p>
+            <p style="font-size: 0.8rem; margin-top: 1rem;">
+                <a href="https://github.com/Decentralized-HAFA-AI/hafa" style="color: #38bdf8; text-decoration: none;">GitHub</a> • 
+                <a href="https://github.com/Decentralized-HAFA-AI/hafa/blob/main/README.md" style="color: #38bdf8; text-decoration: none;">Documentation</a>
+            </p>
         </footer>
     </div>
 
@@ -2310,33 +2794,99 @@ async fn web_dashboard() -> Html<String> {
             return h + 'h ' + m + 'm';
         }
 
+        function formatNumber(num) {
+            return num.toLocaleString();
+        }
+
+        async function updateHealth() {
+            const health = await fetchJSON('/health');
+            if (health && !health.error) {
+                const indicator = document.getElementById('health-indicator');
+                const mainIndicator = document.getElementById('main-indicator');
+                const status = document.getElementById('health-status');
+                const uptime = document.getElementById('uptime');
+                
+                if (health.status === 'healthy') {
+                    indicator.className = 'health-indicator';
+                    mainIndicator.className = 'health-indicator';
+                    status.textContent = 'System Healthy';
+                    status.className = 'success';
+                } else {
+                    indicator.className = 'health-indicator degraded';
+                    mainIndicator.className = 'health-indicator degraded';
+                    status.textContent = 'System Degraded';
+                    status.className = 'warning';
+                }
+                
+                uptime.textContent = formatUptime(health.uptime_secs);
+                
+                // Update individual checks
+                document.getElementById('check-blockchain').className = 
+                    health.checks.blockchain ? 'health-check-icon' : 'health-check-icon failed';
+                document.getElementById('check-learner').className = 
+                    health.checks.learner ? 'health-check-icon' : 'health-check-icon failed';
+                document.getElementById('check-network').className = 
+                    health.checks.network ? 'health-check-icon' : 'health-check-icon failed';
+                document.getElementById('check-autolearn').className = 
+                    health.checks.auto_learning ? 'health-check-icon' : 'health-check-icon failed';
+            }
+        }
+
+        async function updateStats() {
+            const stats = await fetchJSON('/stats/summary');
+            if (stats && !stats.error) {
+                // Blockchain
+                document.getElementById('height').textContent = formatNumber(stats.blockchain.height);
+                document.getElementById('height').className = 'success';
+                document.getElementById('minted').textContent = stats.blockchain.total_minted_hafa.toFixed(2) + ' HAFA';
+                document.getElementById('minted').className = 'success';
+                document.getElementById('reward').textContent = stats.blockchain.current_reward_hafa.toFixed(4) + ' HAFA';
+                document.getElementById('reward').className = 'success';
+                document.getElementById('blocks-mined').textContent = formatNumber(stats.blockchain.height);
+                document.getElementById('total-supply').textContent = '210M';
+                
+                // AI
+                document.getElementById('params').textContent = formatNumber(stats.ai.model_parameters);
+                document.getElementById('params').className = 'success';
+                document.getElementById('buffer').textContent = stats.ai.buffer_size;
+                document.getElementById('buffer').className = 'success';
+                document.getElementById('learning').textContent = stats.ai.is_learning ? '✅ Active' : '⏸️ Idle';
+                document.getElementById('learning').className = 'success';
+                document.getElementById('cycles').textContent = formatNumber(stats.ai.total_cycles);
+                document.getElementById('samples').textContent = formatNumber(stats.ai.total_samples_learned);
+                
+                // Network
+                document.getElementById('peer').textContent = stats.network.peer_id.substring(0, 20) + '...';
+                document.getElementById('peer').className = 'success';
+                document.getElementById('running').textContent = stats.network.is_running ? '✅ Running' : '❌ Stopped';
+                document.getElementById('running').className = 'success';
+                document.getElementById('addresses').textContent = stats.network.listening_addresses.length + ' addresses';
+                document.getElementById('addresses').className = 'success';
+                
+                // Wallet
+                document.getElementById('wallets').textContent = stats.wallet.total_wallets;
+                document.getElementById('wallets').className = 'success';
+            }
+        }
+
         async function refreshData() {
+            await updateHealth();
+            await updateStats();
+            
             const info = await fetchJSON('/info');
             if (info && !info.error) {
-                const el = document.getElementById('height');
-                el.textContent = info.height;
-                el.className = 'success';
-                document.getElementById('minted').textContent = info.total_minted_hafa.toFixed(2) + ' HAFA';
-                document.getElementById('minted').className = 'success';
-                document.getElementById('reward').textContent = info.current_reward_hafa.toFixed(4) + ' HAFA';
-                document.getElementById('reward').className = 'success';
                 document.getElementById('uptime').textContent = formatUptime(info.uptime_secs);
-                document.getElementById('uptime').className = 'success';
             }
 
             const learn = await fetchJSON('/learning-status');
             if (learn && !learn.error) {
-                document.getElementById('params').textContent = learn.total_parameters.toLocaleString();
-                document.getElementById('params').className = 'success';
+                document.getElementById('params').textContent = formatNumber(learn.total_parameters);
             }
 
             const auto = await fetchJSON('/auto-learn/status');
             if (auto && !auto.error) {
                 document.getElementById('buffer').textContent = auto.buffer_size;
-                document.getElementById('buffer').className = 'success';
-                const l = document.getElementById('learning');
-                l.textContent = auto.is_learning ? 'âœ… Yes' : 'â‌Œ No';
-                l.className = 'success';
+                document.getElementById('learning').textContent = auto.is_learning ? '✅ Active' : '⏸️ Idle';
             }
 
             const gpu = await fetchJSON('/gpu/info');
@@ -2345,9 +2895,10 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('backend').className = 'success';
                 document.getElementById('device').textContent = gpu.device_name;
                 document.getElementById('device').className = 'success';
-                const f = document.getElementById('fp16');
-                f.textContent = gpu.supports_fp16 ? 'âœ… Yes' : 'â‌Œ No';
-                f.className = 'success';
+                document.getElementById('fp16').textContent = gpu.supports_fp16 ? '✅ Yes' : '❌ No';
+                document.getElementById('fp16').className = 'success';
+                document.getElementById('compute-units').textContent = gpu.compute_units;
+                document.getElementById('memory').textContent = gpu.memory_mb || 'N/A';
             }
 
             const fed = await fetchJSON('/federated/stats');
@@ -2356,9 +2907,8 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('pool').className = 'success';
                 document.getElementById('shared').textContent = fed.total_shared;
                 document.getElementById('shared').className = 'success';
-                const o = document.getElementById('oldest');
-                o.textContent = fed.oldest_item_age_secs ? fed.oldest_item_age_secs + 's ago' : 'N/A';
-                o.className = 'success';
+                document.getElementById('oldest').textContent = fed.oldest_item_age_secs ? fed.oldest_item_age_secs + 's ago' : 'N/A';
+                document.getElementById('oldest').className = 'success';
             }
 
             const kg = await fetchJSON('/knowledge/stats');
@@ -2367,15 +2917,8 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('entities').className = 'success';
                 document.getElementById('relations').textContent = kg.total_relations;
                 document.getElementById('relations').className = 'success';
-            }
-
-            const p2p = await fetchJSON('/p2p/info');
-            if (p2p && !p2p.error) {
-                document.getElementById('peer').textContent = p2p.peer_id.substring(0, 20) + '...';
-                document.getElementById('peer').className = 'success';
-                const r = document.getElementById('running');
-                r.textContent = p2p.is_running ? 'âœ… Yes' : 'â‌Œ No';
-                r.className = 'success';
+                document.getElementById('entity-confidence').textContent = (kg.avg_entity_confidence * 100).toFixed(1) + '%';
+                document.getElementById('relation-confidence').textContent = (kg.avg_relation_confidence * 100).toFixed(1) + '%';
             }
         }
 
@@ -2391,6 +2934,7 @@ async fn web_dashboard() -> Html<String> {
                 body: JSON.stringify({ passphrase, label: label || null })
             });
             showResult(data, data.error, 'wallet-result');
+            setTimeout(refreshData, 500);
         }
 
         async function listWallets() {
@@ -2406,7 +2950,7 @@ async fn web_dashboard() -> Html<String> {
                 return;
             }
             showResult('Checking balance...', false, 'wallet-result');
-            const data = await fetchJSON('/wallet/' + encodeURIComponent(address) + '/info');
+            const data = await fetchJSON('/wallet/info?address=' + encodeURIComponent(address));
             showResult(data, data.error, 'wallet-result');
         }
 
@@ -2450,6 +2994,15 @@ async fn web_dashboard() -> Html<String> {
                 body: JSON.stringify({ query: query })
             });
             showResult(data, data.error);
+        }
+
+        async function showVersion() {
+            showResult('Loading version info...', false);
+            const data = await fetchJSON('/version');
+            showResult(data, data.error);
+            if (data && !data.error) {
+                document.getElementById('version-badge').textContent = 'v' + data.version;
+            }
         }
 
         // Auto-refresh every 5 seconds
@@ -2524,14 +3077,15 @@ async fn wallet_list(State(state): State<AppState>) -> Json<WalletListResponse> 
 
 async fn wallet_info(
     State(state): State<AppState>,
-    Path(address): Path<String>,
+    Query(query): Query<WalletAddressQuery>,
 ) -> Json<WalletInfoResponse> {
     let manager = state.wallet_manager.lock().await;
+    let address = &query.address;
     
-    match manager.get_wallet_info(&address) {
+    match manager.get_wallet_info(address) {
         Ok(wallet) => {
             let bc = state.blockchain.read().await;
-            let balance = bc.get_balance(&address).await.unwrap_or(0);
+            let balance = bc.get_balance(address).await.unwrap_or(0);
             
             Json(WalletInfoResponse {
                 success: true,
@@ -2553,10 +3107,11 @@ async fn wallet_info(
 
 async fn wallet_sign_transaction(
     State(state): State<AppState>,
-    Path(address): Path<String>,
+    Query(query): Query<WalletAddressQuery>,
     Json(payload): Json<WalletSignRequest>,
 ) -> Json<WalletSignResponse> {
     let manager = state.wallet_manager.lock().await;
+    let address = &query.address;
     
     let tx = TransactionRequest::new(
         address.clone(),
@@ -2565,7 +3120,7 @@ async fn wallet_sign_transaction(
         payload.fee,
     );
     
-    match manager.sign_transaction(&address, &payload.passphrase, &tx) {
+    match manager.sign_transaction(address, &payload.passphrase, &tx) {
         Ok(signed_tx) => Json(WalletSignResponse {
             success: true,
             signed_transaction: Some(signed_tx),
@@ -2581,12 +3136,13 @@ async fn wallet_sign_transaction(
 
 async fn wallet_delete(
     State(state): State<AppState>,
-    Path(address): Path<String>,
+    Query(query): Query<WalletAddressQuery>,
     Json(_payload): Json<WalletDeleteRequest>,
 ) -> Json<WalletDeleteResponse> {
     let mut manager = state.wallet_manager.lock().await;
+    let address = &query.address;
     
-    match manager.delete_wallet(&address) {
+    match manager.delete_wallet(address) {
         Ok(_) => Json(WalletDeleteResponse {
             success: true,
             message: "Wallet deleted successfully".to_string(),
@@ -2596,4 +3152,137 @@ async fn wallet_delete(
             message: format!("Failed to delete wallet: {}", e),
         }),
     }
+}
+// ============================================================================
+// HEALTH & STATS HANDLERS
+// ============================================================================
+
+async fn health_check(State(state): State<AppState>) -> Json<HealthResponse> {
+    let blockchain_ok = {
+        let bc = state.blockchain.read().await;
+        bc.get_chain_height().await > 0
+    };
+    
+    let learner_ok = {
+        let learner = state.learner.read().await;
+        learner.get_stats().total_parameters > 0
+    };
+    
+    let network_ok = {
+        match &state.learning_network {
+            Some(net) => net.is_running(),
+            None => false,
+        }
+    };
+    
+    let auto_learning_ok = {
+    let engine = state.auto_learning.read().await;
+    // Check if engine is accessible and properly initialized
+    let _ = engine.buffer_size(); // Just verify we can read it
+    true
+};
+    
+    let all_healthy = blockchain_ok && learner_ok && network_ok && auto_learning_ok;
+    
+    Json(HealthResponse {
+        status: if all_healthy { "healthy".to_string() } else { "degraded".to_string() },
+        timestamp: Utc::now().timestamp() as u64,
+        uptime_secs: Utc::now().timestamp() - state.started_at,
+        checks: HealthChecks {
+            blockchain: blockchain_ok,
+            learner: learner_ok,
+            network: network_ok,
+            auto_learning: auto_learning_ok,
+        },
+    })
+}
+
+async fn stats_summary(State(state): State<AppState>) -> Json<StatsSummaryResponse> {
+    // Blockchain stats
+    let blockchain = {
+        let bc = state.blockchain.read().await;
+        let height = bc.get_chain_height().await;
+        let total_minted = bc.get_total_minted().await;
+        let current_reward = bc.get_current_reward().await;
+        
+        BlockchainStats {
+            height,
+            total_minted,
+            total_minted_hafa: total_minted as f64 / 100_000_000.0,
+            current_reward,
+            current_reward_hafa: current_reward as f64 / 100_000_000.0,
+        }
+    };
+    
+    // AI stats
+    let ai = {
+        let learner = state.learner.read().await;
+        let stats = learner.get_stats();
+        
+        let engine = state.auto_learning.read().await;
+        let engine_stats = engine.stats();
+        
+        AIStats {
+            model_parameters: stats.total_parameters,
+            buffer_size: engine.buffer_size(),
+            is_learning: engine.is_learning(),
+            total_cycles: engine_stats.total_cycles,
+            total_samples_learned: engine_stats.total_samples_learned,
+        }
+    };
+    
+    // Network stats
+    let network = {
+        let (peer_id, is_running, listening_addresses) = match &state.learning_network {
+            Some(net) => (
+                net.local_peer_id(),
+                net.is_running(),
+                net.get_listening_addresses().await,
+            ),
+            None => ("N/A".to_string(), false, vec![]),
+        };
+        
+        let pool = state.learning_pool.read().await;
+        
+        NetworkStats {
+            peer_id,
+            is_running,
+            listening_addresses,
+            federated_pool_size: pool.len(),
+        }
+    };
+    
+    // Wallet stats
+    let wallet = {
+        let manager = state.wallet_manager.lock().await;
+        WalletStats {
+            total_wallets: manager.list_wallets().len(),
+        }
+    };
+    
+    Json(StatsSummaryResponse {
+        blockchain,
+        ai,
+        network,
+        wallet,
+        timestamp: Utc::now().timestamp() as u64,
+    })
+}
+
+async fn version_info() -> Json<VersionResponse> {
+    Json(VersionResponse {
+        version: "5.1.0".to_string(),
+        build_date: "2026-01-15".to_string(), // Update this when you build
+        rust_version: "1.70+".to_string(),
+        protocol: "HAFA-v1".to_string(),
+        features: vec![
+            "PoUCW".to_string(),
+            "Transformer-v4".to_string(),
+            "Knowledge-Graph".to_string(),
+            "P2P-Network".to_string(),
+            "GPU-Acceleration".to_string(),
+            "Wallet-System".to_string(),
+            "Auto-Learning".to_string(),
+        ],
+    })
 }

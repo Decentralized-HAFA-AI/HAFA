@@ -801,10 +801,18 @@ impl ApiSession {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     fn test_config() -> Config {
         let mut cfg = Config::default();
         cfg.founder.genesis_pubkey_hex = "a".repeat(64);
+        
+        // Use temp directory for tests to avoid storage errors
+        let temp_dir = env::temp_dir()
+            .join("hafa_test")
+            .join(format!("test_{}", rand::random::<u64>()));
+        cfg.storage.data_dir = temp_dir;
+        
         cfg
     }
 
@@ -825,7 +833,7 @@ mod tests {
             evolution,
             reputation,
             event_tx,
-            None, // No auto-learning engine for this test
+            None, // Auto-learning engine disabled for this test
         )
         .await;
 
@@ -850,7 +858,7 @@ mod tests {
             evolution,
             reputation,
             event_tx,
-            None,
+            None, // Auto-learning engine disabled for this test
         )
         .await
         .unwrap();
@@ -887,7 +895,7 @@ mod tests {
             evolution,
             reputation,
             event_tx,
-            None,
+            None, // Auto-learning engine disabled for this test
         )
         .await
         .unwrap();
@@ -913,7 +921,7 @@ mod tests {
             evolution,
             reputation,
             event_tx,
-            None,
+            None, // Auto-learning engine disabled for this test
         )
         .await
         .unwrap();
@@ -946,7 +954,7 @@ mod tests {
             evolution,
             reputation,
             event_tx,
-            None,
+            None, // Auto-learning engine disabled for this test
         )
         .await
         .unwrap();
@@ -978,7 +986,7 @@ mod tests {
             evolution,
             reputation,
             event_tx,
-            None,
+            None, // Auto-learning engine disabled for this test
         )
         .await
         .unwrap();
@@ -1009,7 +1017,7 @@ mod tests {
             evolution,
             reputation,
             event_tx,
-            None, // No auto-learning engine
+            None, // Auto-learning engine disabled for this test
         )
         .await
         .unwrap();
