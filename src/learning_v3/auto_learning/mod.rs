@@ -15,7 +15,7 @@ pub mod episodic_memory;
 pub mod gossipsub_source;
 pub mod learning_network;
 pub mod learning_protocol;
-
+pub mod web_source;
 
 pub use data_source::{DataSource, TrainingSample, InMemoryDataSource};
 pub use engine::{AutoLearningEngine, AutoLearningConfig, AutoLearningStats};

@@ -22,6 +22,7 @@
 // - GPU Backend (WGPU acceleration)
 // - Inline Web UI Dashboard
 // - Wallet Management System
+// - Web Data Sources (Internet learning from RSS, Wikipedia, Arxiv)
 //
 // ============================================================================
 
@@ -56,6 +57,12 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex, RwLock};
 use hafa::learning_v3::{AcceleratedOps, BenchmarkResult, WgpuBackend};
 use hafa::learning_v3::backend::{Backend, CpuBackend};
+use hafa::learning_v3::auto_learning::web_source::{
+    WebDataSourceManager,
+    RSSFeedSource,
+    WikipediaSource,
+    ArxivSource,
+};
 
 // ============================================================================
 // APPLICATION STATE
@@ -725,6 +732,7 @@ struct WalletDeleteResponse {
     success: bool,
     message: String,
 }
+
 // ============================================================================
 // HEALTH & STATS API STRUCTURES
 // ============================================================================
@@ -944,7 +952,76 @@ async fn main() {
         println!("   🌐 GossipSub Data Source registered (Real P2P learning via libp2p) ✨");
     }
 
-       // ========================================================================
+    // 3. Register Web Data Sources (Internet Learning) - Background Task
+    if config.learning.allow_internet_learning {
+        let web_manager = Arc::new(Mutex::new(WebDataSourceManager::new(300)));
+        
+        {
+            let mut manager = web_manager.lock().await;
+            
+            // Add RSS feeds
+            manager.add_source(Box::new(RSSFeedSource::new(
+                "hacker_news",
+                "https://news.ycombinator.com/rss",
+                20,
+            )));
+            
+            manager.add_source(Box::new(RSSFeedSource::new(
+                "rust_blog",
+                "https://blog.rust-lang.org/feed.xml",
+                25,
+            )));
+            
+            // Add Wikipedia
+            manager.add_source(Box::new(WikipediaSource::new(30)));
+            
+            // Add Arxiv (AI/ML papers)
+            manager.add_source(Box::new(ArxivSource::new(
+                "machine+learning+OR+artificial+intelligence",
+                35,
+            )));
+        }
+        
+        println!("   🌐 Web Data Sources registered (Internet learning enabled) ✨");
+        
+        // Spawn background task for web learning
+        let web_manager_clone = Arc::clone(&web_manager);
+        let auto_learning_clone = Arc::clone(&state.auto_learning);
+        
+        tokio::spawn(async move {
+            println!("   🌐 Web Learning Task started (polling every 5 minutes) ✨");
+            
+            // Wait 60 seconds before first poll
+            tokio::time::sleep(Duration::from_secs(60)).await;
+            
+            loop {
+                let samples = {
+                    let mut manager = web_manager_clone.lock().await;
+                    manager.fetch_all().await
+                };
+                
+                if !samples.is_empty() {
+                    let mut engine = auto_learning_clone.write().await;
+                    let mut added = 0;
+                    
+                    for sample in samples {
+                        if engine.push_sample(sample) {
+                            added += 1;
+                        }
+                    }
+                    
+                    if added > 0 {
+                        println!("   [WEB] 🌐 Added {} samples from internet sources", added);
+                    }
+                }
+                
+                // Sleep for 5 minutes (300 seconds)
+                tokio::time::sleep(Duration::from_secs(300)).await;
+            }
+        });
+    }
+
+    // ========================================================================
     // BACKGROUND AUTO-LEARNING TASK (Fully Autonomous AI - Optimized & Deadlock-Free)
     // ========================================================================
     
@@ -959,7 +1036,7 @@ async fn main() {
         
         loop {
             // 1. Handle Federated Learning Pool (Hold locks briefly)
-let pool_samples_count;
+            let pool_samples_count;
             {
                 let mut pool = bg_pool.write().await;
                 let mut engine = bg_auto_learning.write().await;
@@ -979,7 +1056,7 @@ let pool_samples_count;
                     }
                 }
                 pool_samples_count = count;
-            } // 🔓 Locks are dropped here immediately!
+            }
             
             if pool_samples_count > 0 {
                 println!("   [FEDERATED] 🌐 Polled {} sample(s) from pool", pool_samples_count);
@@ -997,24 +1074,22 @@ let pool_samples_count;
                         0
                     }
                 }
-            }; // 🔓 Lock dropped
+            };
 
             // 3. Check conditions and trigger learning (Read before Write)
             if new_samples > 0 {
                 let (buffer_size, should_learn) = {
-                    let engine = bg_auto_learning.read().await; // 🔒 Read lock is safe and non-blocking for other readers
+                    let engine = bg_auto_learning.read().await;
                     (engine.buffer_size(), engine.should_learn())
-                }; // 🔓 Read lock dropped
+                };
                 
                 println!("   [BACKGROUND] 🧠 Polled {} new sample(s) | Buffer: {}", new_samples, buffer_size);
                 
                 if should_learn {
                     println!("   [BACKGROUND] 🚀 Conditions met! Auto-triggering learning cycle...");
                     
-                    // Hold write lock ONLY for the actual trigger execution
                     let mut engine = bg_auto_learning.write().await;
                     
-                    // trigger_learning() is sync, so no timeout needed
                     match engine.trigger_learning() {
                         Some(proof) => {
                             println!("   [BACKGROUND] ✅ Learning cycle complete!");
@@ -1026,7 +1101,7 @@ let pool_samples_count;
                         None => {
                             println!("   [BACKGROUND] ⚠️  Learning trigger returned None (unexpected)");
                         }
-                    } // 🔓 Write lock dropped
+                    }
                 } else {
                     println!("   [BACKGROUND] ⏳ Waiting for more samples before learning...");
                 }
@@ -1103,7 +1178,8 @@ let pool_samples_count;
         .route("/wallet/info", get(wallet_info))
         .route("/wallet/sign", post(wallet_sign_transaction))
         .route("/wallet/delete", post(wallet_delete))
-                .route("/health", get(health_check))
+        // Health & Stats endpoints
+        .route("/health", get(health_check))
         .route("/stats/summary", get(stats_summary))
         .route("/version", get(version_info))
         .with_state(state);
@@ -1161,7 +1237,7 @@ let pool_samples_count;
         println!("      GET  /wallet/info?address=  - Wallet info + balance 💼");
         println!("      POST /wallet/sign?address=  - Sign transaction 💼");
         println!("      POST /wallet/delete?address=- Delete wallet 💼");
-                println!("      GET  /health              - Health check 🏥");
+        println!("      GET  /health              - Health check 🏥");
         println!("      GET  /stats/summary       - System summary 📊");
         println!("      GET  /version             - Version info 📦");
         println!("      🔄 Background Auto-Learning: polls every 60s ✨");
@@ -1339,8 +1415,7 @@ async fn get_learning_status(State(state): State<AppState>) -> Json<LearningStat
     })
 }
 
-async fn feed_data(State(state): State<AppState>, Json(payload): Json<FeedRequest>) -> Json<FeedResponse> {
-    if payload.content.is_empty() {
+async fn feed_data(State(state): State<AppState>, Json(payload): Json<FeedRequest>) -> Json<FeedResponse> {    if payload.content.is_empty() {
         return Json(FeedResponse { success: false, buffer_size: 0, message: "Empty content".to_string() });
     }
 
@@ -1368,8 +1443,7 @@ async fn feed_data(State(state): State<AppState>, Json(payload): Json<FeedReques
     Json(FeedResponse { success: true, buffer_size, message: format!("Data ingested. Buffer size: {}", buffer_size) })
 }
 
-async fn train_model(State(state): State<AppState>, Json(payload): Json<TrainRequest>) -> Json<TrainResponse> {
-    if payload.epochs == 0 {
+async fn train_model(State(state): State<AppState>, Json(payload): Json<TrainRequest>) -> Json<TrainResponse> {    if payload.epochs == 0 {
         return Json(TrainResponse { success: false, epochs_completed: 0, avg_loss: 0.0, message: "Epochs must be > 0".to_string() });
     }
 
@@ -1396,8 +1470,7 @@ async fn train_model(State(state): State<AppState>, Json(payload): Json<TrainReq
     })
 }
 
-async fn query_model(State(state): State<AppState>, Json(payload): Json<QueryRequest>) -> Json<QueryResponse> {
-    if payload.input.is_empty() {
+async fn query_model(State(state): State<AppState>, Json(payload): Json<QueryRequest>) -> Json<QueryResponse> {    if payload.input.is_empty() {
         return Json(QueryResponse { success: false, generated_bytes: vec![], generated_text: String::new(), steps: 0, message: "Empty input".to_string() });
     }
 
@@ -1417,12 +1490,10 @@ async fn query_model(State(state): State<AppState>, Json(payload): Json<QueryReq
     })
 }
 
-async fn generate_text(State(state): State<AppState>, Json(payload): Json<QueryRequest>) -> Json<QueryResponse> {
-    query_model(State(state), Json(payload)).await
+async fn generate_text(State(state): State<AppState>, Json(payload): Json<QueryRequest>) -> Json<QueryResponse> {    query_model(State(state), Json(payload)).await
 }
 
-async fn ingest_directory(State(state): State<AppState>, Json(payload): Json<IngestDirectoryRequest>) -> Json<IngestDirectoryResponse> {
-    let path = std::path::Path::new(&payload.path);
+async fn ingest_directory(State(state): State<AppState>, Json(payload): Json<IngestDirectoryRequest>) -> Json<IngestDirectoryResponse> {    let path = std::path::Path::new(&payload.path);
 
     if path.is_file() {
         match tokio::fs::read(&payload.path).await {
@@ -1475,8 +1546,7 @@ async fn ingest_directory(State(state): State<AppState>, Json(payload): Json<Ing
 // TRANSFORMER V3 HANDLERS (Legacy)
 // ============================================================================
 
-async fn generate_v3(State(state): State<AppState>, Json(payload): Json<GenerateV3Request>) -> Json<GenerateV3Response> {
-    if payload.prompt.is_empty() {
+async fn generate_v3(State(state): State<AppState>, Json(payload): Json<GenerateV3Request>) -> Json<GenerateV3Response> {    if payload.prompt.is_empty() {
         return Json(GenerateV3Response { success: false, generated_text: String::new(), steps: 0, message: "Empty prompt".to_string() });
     }
     if payload.steps == 0 || payload.steps > 100 {
@@ -1505,8 +1575,7 @@ async fn generate_v3(State(state): State<AppState>, Json(payload): Json<Generate
     }
 }
 
-async fn train_v3(State(state): State<AppState>, Json(payload): Json<TrainV3Request>) -> Json<TrainV3Response> {
-    if payload.input.is_empty() || payload.target.is_empty() {
+async fn train_v3(State(state): State<AppState>, Json(payload): Json<TrainV3Request>) -> Json<TrainV3Response> {    if payload.input.is_empty() || payload.target.is_empty() {
         return Json(TrainV3Response { success: false, final_loss: 0.0, message: "Input and target cannot be empty".to_string() });
     }
 
@@ -1523,8 +1592,7 @@ async fn train_v3(State(state): State<AppState>, Json(payload): Json<TrainV3Requ
     })
 }
 
-async fn train_text_v3(State(state): State<AppState>, Json(payload): Json<TrainTextV3Request>) -> Json<TrainTextV3Response> {
-    if payload.text.is_empty() {
+async fn train_text_v3(State(state): State<AppState>, Json(payload): Json<TrainTextV3Request>) -> Json<TrainTextV3Response> {    if payload.text.is_empty() {
         return Json(TrainTextV3Response { 
             success: false, final_loss: 0.0, samples_trained: 0, 
             message: "Text cannot be empty".to_string(), cognitive_proof: None 
@@ -1672,15 +1740,6 @@ async fn auto_learn_feed(
     let sample = TrainingSample::new(payload.text.clone(), payload.source.clone(), payload.confidence);
     let success = engine.push_sample(sample);
     let buffer_size = engine.buffer_size();
-
-    // DISABLED: Broadcast to P2P network (causes hang when no peers available)
-    // if success {
-    //     if let Some(network) = &state.learning_network {
-    //         if let Err(e) = network.broadcast_sample(payload.text, payload.source, payload.confidence).await {
-    //             eprintln!("   ⚠️  Failed to broadcast sample: {}", e);
-    //         }
-    //     }
-    // }
 
     Json(AutoLearnFeedResponse {
         success,
@@ -2184,7 +2243,6 @@ async fn web_dashboard() -> Html<String> {
     <title>HAFA v5.1.0 Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
         body { 
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
@@ -2193,10 +2251,7 @@ async fn web_dashboard() -> Html<String> {
             padding: 1rem;
             line-height: 1.6;
         }
-        
         .container { max-width: 1400px; margin: 0 auto; }
-        
-        /* Header */
         header { 
             text-align: center; 
             margin-bottom: 2rem;
@@ -2206,7 +2261,6 @@ async fn web_dashboard() -> Html<String> {
             backdrop-filter: blur(10px);
             border: 1px solid rgba(148, 163, 184, 0.1);
         }
-        
         header h1 { 
             font-size: 2.5rem; 
             background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
@@ -2216,12 +2270,10 @@ async fn web_dashboard() -> Html<String> {
             margin-bottom: 0.5rem;
             animation: gradient 3s ease infinite;
         }
-        
         @keyframes gradient {
             0%, 100% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
         }
-        
         .subtitle { 
             color: #94a3b8; 
             font-size: 1rem;
@@ -2230,8 +2282,6 @@ async fn web_dashboard() -> Html<String> {
             justify-content: center;
             gap: 0.5rem;
         }
-        
-        /* Health Status Banner */
         .health-banner {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
             border: 1px solid rgba(16, 185, 129, 0.3);
@@ -2244,70 +2294,28 @@ async fn web_dashboard() -> Html<String> {
             flex-wrap: wrap;
             gap: 1rem;
         }
-        
-        .health-status {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
+        .health-status { display: flex; align-items: center; gap: 1rem; }
         .health-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #10b981;
-            box-shadow: 0 0 10px #10b981;
+            width: 12px; height: 12px; border-radius: 50%;
+            background: #10b981; box-shadow: 0 0 10px #10b981;
             animation: pulse 2s infinite;
         }
-        
-        .health-indicator.degraded {
-            background: #f59e0b;
-            box-shadow: 0 0 10px #f59e0b;
-        }
-        
-        .health-indicator.down {
-            background: #ef4444;
-            box-shadow: 0 0 10px #ef4444;
-        }
-        
+        .health-indicator.degraded { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .health-indicator.down { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
         @keyframes pulse {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.1); }
         }
-        
-        .health-details {
-            display: flex;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-        }
-        
-        .health-check {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-        }
-        
-        .health-check-icon {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-        }
-        
-        .health-check-icon.failed {
-            background: #ef4444;
-        }
-        
-        /* Grid Layout */
+        .health-details { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+        .health-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+        .health-check-icon { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+        .health-check-icon.failed { background: #ef4444; }
         .grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
             gap: 1.5rem; 
             margin-bottom: 2rem; 
         }
-        
-        /* Cards */
         .card { 
             background: rgba(30, 41, 59, 0.7); 
             backdrop-filter: blur(10px); 
@@ -2318,29 +2326,17 @@ async fn web_dashboard() -> Html<String> {
             position: relative;
             overflow: hidden;
         }
-        
         .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #38bdf8, #818cf8);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: linear-gradient(90deg, #38bdf8, #818cf8);
+            transform: scaleX(0); transition: transform 0.3s ease;
         }
-        
         .card:hover { 
             transform: translateY(-4px); 
             border-color: rgba(56, 189, 248, 0.3);
             box-shadow: 0 8px 24px rgba(56, 189, 248, 0.1);
         }
-        
-        .card:hover::before {
-            transform: scaleX(1);
-        }
-        
+        .card:hover::before { transform: scaleX(1); }
         .card h2 { 
             color: #38bdf8; 
             margin-bottom: 1rem; 
@@ -2351,7 +2347,6 @@ async fn web_dashboard() -> Html<String> {
             align-items: center;
             gap: 0.5rem;
         }
-        
         .stat { 
             display: flex; 
             justify-content: space-between; 
@@ -2359,189 +2354,78 @@ async fn web_dashboard() -> Html<String> {
             border-bottom: 1px solid rgba(148, 163, 184, 0.05);
             transition: background 0.2s ease;
         }
-        
-        .stat:hover {
-            background: rgba(148, 163, 184, 0.05);
-        }
-        
+        .stat:hover { background: rgba(148, 163, 184, 0.05); }
         .stat:last-child { border-bottom: none; }
-        
-        .stat-label {
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-        
+        .stat-label { color: #94a3b8; font-size: 0.9rem; }
         .stat strong { 
             color: #f8fafc; 
             font-family: 'Courier New', monospace; 
             word-break: break-all;
             font-size: 0.95rem;
         }
-        
-        /* Stats Grid */
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-top: 1rem;
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 1rem; margin-top: 1rem;
         }
-        
         .stat-box {
-            background: rgba(15, 23, 42, 0.5);
-            padding: 1rem;
-            border-radius: 0.5rem;
-            text-align: center;
+            background: rgba(15, 23, 42, 0.5); padding: 1rem;
+            border-radius: 0.5rem; text-align: center;
             border: 1px solid rgba(148, 163, 184, 0.1);
         }
-        
-        .stat-box-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #38bdf8;
-            margin-bottom: 0.25rem;
-        }
-        
-        .stat-box-label {
-            font-size: 0.8rem;
-            color: #94a3b8;
-        }
-        
-        /* Action Buttons */
-        .actions { 
-            display: flex; 
-            gap: 0.75rem; 
-            justify-content: center; 
-            margin-top: 1rem; 
-            flex-wrap: wrap; 
-        }
-        
+        .stat-box-value { font-size: 1.5rem; font-weight: bold; color: #38bdf8; margin-bottom: 0.25rem; }
+        .stat-box-label { font-size: 0.8rem; color: #94a3b8; }
+        .actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
         button { 
             background: linear-gradient(135deg, #38bdf8, #818cf8); 
-            color: white; 
-            border: none; 
-            padding: 0.75rem 1.5rem; 
-            border-radius: 0.5rem; 
-            font-weight: 600; 
-            cursor: pointer; 
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
+            color: white; border: none; padding: 0.75rem 1.5rem; 
+            border-radius: 0.5rem; font-weight: 600; cursor: pointer; 
+            transition: all 0.2s ease; font-size: 0.9rem;
         }
-        
-        button:hover { 
-            opacity: 0.9; 
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
-        }
-        
-        button:active {
-            transform: scale(0.98);
-        }
-        
-        /* Result Box */
+        button:hover { opacity: 0.9; transform: scale(1.05); box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3); }
+        button:active { transform: scale(0.98); }
         .result { 
-            margin-top: 1rem; 
-            padding: 1rem; 
+            margin-top: 1rem; padding: 1rem; 
             background: rgba(15, 23, 42, 0.8); 
-            border-radius: 0.5rem; 
-            font-family: 'Courier New', monospace; 
-            color: #38bdf8; 
-            display: none; 
-            text-align: left;
-            white-space: pre-wrap;
-            max-height: 400px;
-            overflow-y: auto;
+            border-radius: 0.5rem; font-family: 'Courier New', monospace; 
+            color: #38bdf8; display: none; text-align: left;
+            white-space: pre-wrap; max-height: 400px; overflow-y: auto;
             border: 1px solid rgba(56, 189, 248, 0.2);
         }
-        
-        /* Footer */
         footer { 
-            text-align: center; 
-            margin-top: 3rem; 
-            padding: 2rem;
-            color: #64748b;
-            background: rgba(30, 41, 59, 0.3);
+            text-align: center; margin-top: 3rem; padding: 2rem;
+            color: #64748b; background: rgba(30, 41, 59, 0.3);
             border-radius: 1rem;
         }
-        
-        footer p {
-            margin: 0.5rem 0;
-        }
-        
-        /* Status Classes */
+        footer p { margin: 0.5rem 0; }
         .loading { color: #fbbf24; font-style: italic; }
         .success { color: #10b981; }
         .error { color: #ef4444; }
         .warning { color: #f59e0b; }
-        
-        /* Wallet Section */
-        .wallet-section {
-            margin-top: 2rem;
-            padding: 1.5rem;
-            background: rgba(30, 41, 59, 0.7);
-            border-radius: 1rem;
-            border: 1px solid rgba(148, 163, 184, 0.1);
-        }
-        
-        .wallet-section h2 {
-            color: #fbbf24;
-            margin-bottom: 1rem;
-        }
-        
         .wallet-input {
             background: rgba(15, 23, 42, 0.5);
             border: 1px solid rgba(148, 163, 184, 0.2);
-            color: #e2e8f0;
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            margin: 0.5rem;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
+            color: #e2e8f0; padding: 0.75rem 1rem;
+            border-radius: 0.5rem; margin: 0.5rem;
+            font-family: 'Courier New', monospace; font-size: 0.9rem;
             transition: border-color 0.2s ease;
         }
-        
-        .wallet-input:focus {
-            outline: none;
-            border-color: #38bdf8;
-        }
-        
-        /* Version Badge */
+        .wallet-input:focus { outline: none; border-color: #38bdf8; }
         .version-badge {
             display: inline-block;
             background: linear-gradient(135deg, #818cf8, #c084fc);
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-left: 0.5rem;
+            padding: 0.25rem 0.75rem; border-radius: 1rem;
+            font-size: 0.8rem; font-weight: 600; margin-left: 0.5rem;
         }
-        
-        /* Responsive */
         @media (max-width: 768px) {
             header h1 { font-size: 2rem; }
             .grid { grid-template-columns: 1fr; }
             .health-banner { flex-direction: column; align-items: flex-start; }
             .stats-grid { grid-template-columns: 1fr; }
         }
-        
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: rgba(56, 189, 248, 0.5);
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(56, 189, 248, 0.7);
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.7); }
     </style>
 </head>
 <body>
@@ -2553,8 +2437,6 @@ async fn web_dashboard() -> Html<String> {
                 Decentralized AI Blockchain • Auto-refresh every 5s
             </p>
         </header>
-
-        <!-- Health Status Banner -->
         <div class="health-banner" id="health-banner">
             <div class="health-status">
                 <div class="health-indicator" id="health-indicator"></div>
@@ -2566,171 +2448,67 @@ async fn web_dashboard() -> Html<String> {
                 </div>
             </div>
             <div class="health-details">
-                <div class="health-check">
-                    <div class="health-check-icon" id="check-blockchain"></div>
-                    <span>Blockchain</span>
-                </div>
-                <div class="health-check">
-                    <div class="health-check-icon" id="check-learner"></div>
-                    <span>AI Engine</span>
-                </div>
-                <div class="health-check">
-                    <div class="health-check-icon" id="check-network"></div>
-                    <span>P2P Network</span>
-                </div>
-                <div class="health-check">
-                    <div class="health-check-icon" id="check-autolearn"></div>
-                    <span>Auto-Learning</span>
-                </div>
+                <div class="health-check"><div class="health-check-icon" id="check-blockchain"></div><span>Blockchain</span></div>
+                <div class="health-check"><div class="health-check-icon" id="check-learner"></div><span>AI Engine</span></div>
+                <div class="health-check"><div class="health-check-icon" id="check-network"></div><span>P2P Network</span></div>
+                <div class="health-check"><div class="health-check-icon" id="check-autolearn"></div><span>Auto-Learning</span></div>
             </div>
         </div>
-
         <div class="grid">
-            <!-- Blockchain Card -->
             <div class="card">
                 <h2>⛓️ Blockchain</h2>
-                <div class="stat">
-                    <span class="stat-label">Height:</span>
-                    <strong id="height" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Total Minted:</span>
-                    <strong id="minted" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Current Reward:</span>
-                    <strong id="reward" class="loading">Loading...</strong>
-                </div>
+                <div class="stat"><span class="stat-label">Height:</span><strong id="height" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Total Minted:</span><strong id="minted" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Current Reward:</span><strong id="reward" class="loading">Loading...</strong></div>
                 <div class="stats-grid">
-                    <div class="stat-box">
-                        <div class="stat-box-value" id="blocks-mined">0</div>
-                        <div class="stat-box-label">Blocks Mined</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-box-value" id="total-supply">0</div>
-                        <div class="stat-box-label">Total Supply</div>
-                    </div>
+                    <div class="stat-box"><div class="stat-box-value" id="blocks-mined">0</div><div class="stat-box-label">Blocks Mined</div></div>
+                    <div class="stat-box"><div class="stat-box-value" id="total-supply">0</div><div class="stat-box-label">Total Supply</div></div>
                 </div>
             </div>
-
-            <!-- AI Model Card -->
             <div class="card">
                 <h2>🧠 AI Model</h2>
-                <div class="stat">
-                    <span class="stat-label">Parameters:</span>
-                    <strong id="params" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Buffer Size:</span>
-                    <strong id="buffer" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Learning Status:</span>
-                    <strong id="learning" class="loading">Loading...</strong>
-                </div>
+                <div class="stat"><span class="stat-label">Parameters:</span><strong id="params" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Buffer Size:</span><strong id="buffer" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Learning Status:</span><strong id="learning" class="loading">Loading...</strong></div>
                 <div class="stats-grid">
-                    <div class="stat-box">
-                        <div class="stat-box-value" id="cycles">0</div>
-                        <div class="stat-box-label">Learning Cycles</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-box-value" id="samples">0</div>
-                        <div class="stat-box-label">Samples Learned</div>
-                    </div>
+                    <div class="stat-box"><div class="stat-box-value" id="cycles">0</div><div class="stat-box-label">Learning Cycles</div></div>
+                    <div class="stat-box"><div class="stat-box-value" id="samples">0</div><div class="stat-box-label">Samples Learned</div></div>
                 </div>
             </div>
-
-            <!-- Compute Backend Card -->
             <div class="card">
                 <h2>🎮 Compute Backend</h2>
-                <div class="stat">
-                    <span class="stat-label">Backend:</span>
-                    <strong id="backend" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Device:</span>
-                    <strong id="device" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">FP16 Support:</span>
-                    <strong id="fp16" class="loading">Loading...</strong>
-                </div>
+                <div class="stat"><span class="stat-label">Backend:</span><strong id="backend" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Device:</span><strong id="device" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">FP16 Support:</span><strong id="fp16" class="loading">Loading...</strong></div>
                 <div class="stats-grid">
-                    <div class="stat-box">
-                        <div class="stat-box-value" id="compute-units">0</div>
-                        <div class="stat-box-label">Compute Units</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-box-value" id="memory">0</div>
-                        <div class="stat-box-label">Memory (MB)</div>
-                    </div>
+                    <div class="stat-box"><div class="stat-box-value" id="compute-units">0</div><div class="stat-box-label">Compute Units</div></div>
+                    <div class="stat-box"><div class="stat-box-value" id="memory">0</div><div class="stat-box-label">Memory (MB)</div></div>
                 </div>
             </div>
-
-            <!-- Knowledge Graph Card -->
             <div class="card">
                 <h2>🧠 Knowledge Graph</h2>
-                <div class="stat">
-                    <span class="stat-label">Entities:</span>
-                    <strong id="entities" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Relations:</span>
-                    <strong id="relations" class="loading">Loading...</strong>
-                </div>
+                <div class="stat"><span class="stat-label">Entities:</span><strong id="entities" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Relations:</span><strong id="relations" class="loading">Loading...</strong></div>
                 <div class="stats-grid">
-                    <div class="stat-box">
-                        <div class="stat-box-value" id="entity-confidence">0</div>
-                        <div class="stat-box-label">Avg Confidence</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-box-value" id="relation-confidence">0</div>
-                        <div class="stat-box-label">Relation Confidence</div>
-                    </div>
+                    <div class="stat-box"><div class="stat-box-value" id="entity-confidence">0</div><div class="stat-box-label">Avg Confidence</div></div>
+                    <div class="stat-box"><div class="stat-box-value" id="relation-confidence">0</div><div class="stat-box-label">Relation Confidence</div></div>
                 </div>
             </div>
-
-            <!-- P2P Network Card -->
             <div class="card">
                 <h2>🌐 P2P Network</h2>
-                <div class="stat">
-                    <span class="stat-label">Peer ID:</span>
-                    <strong id="peer" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Status:</span>
-                    <strong id="running" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Listening:</span>
-                    <strong id="addresses" class="loading">Loading...</strong>
-                </div>
+                <div class="stat"><span class="stat-label">Peer ID:</span><strong id="peer" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Status:</span><strong id="running" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Listening:</span><strong id="addresses" class="loading">Loading...</strong></div>
             </div>
-
-            <!-- Federated Learning Card -->
             <div class="card">
                 <h2>🤝 Federated Learning</h2>
-                <div class="stat">
-                    <span class="stat-label">Pool Size:</span>
-                    <strong id="pool" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Total Shared:</span>
-                    <strong id="shared" class="loading">Loading...</strong>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Oldest Item:</span>
-                    <strong id="oldest" class="loading">Loading...</strong>
-                </div>
+                <div class="stat"><span class="stat-label">Pool Size:</span><strong id="pool" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Total Shared:</span><strong id="shared" class="loading">Loading...</strong></div>
+                <div class="stat"><span class="stat-label">Oldest Item:</span><strong id="oldest" class="loading">Loading...</strong></div>
             </div>
-
-            <!-- Wallet Card -->
             <div class="card">
                 <h2>💼 Wallet System</h2>
-                <div class="stat">
-                    <span class="stat-label">Total Wallets:</span>
-                    <strong id="wallets" class="loading">Loading...</strong>
-                </div>
+                <div class="stat"><span class="stat-label">Total Wallets:</span><strong id="wallets" class="loading">Loading...</strong></div>
                 <div class="actions">
                     <button onclick="createWallet()">🔑 Create Wallet</button>
                     <button onclick="listWallets()">📋 List Wallets</button>
@@ -2739,8 +2517,6 @@ async fn web_dashboard() -> Html<String> {
                 <button onclick="checkBalance()" style="width: 100%; margin-top: 0.5rem;">💰 Check Balance</button>
             </div>
         </div>
-
-        <!-- Quick Actions -->
         <div class="card" style="margin-top: 2rem;">
             <h2>⚙️ Quick Actions</h2>
             <div class="actions">
@@ -2752,9 +2528,7 @@ async fn web_dashboard() -> Html<String> {
             </div>
             <div id="action-result" class="result"></div>
         </div>
-
         <div id="wallet-result" class="result"></div>
-
         <footer>
             <p><strong>HAFA</strong> - Horizon After Freedom Achieved</p>
             <p style="font-size: 0.85rem;">Decentralized AI Blockchain with Native Transformer • PoUCW Consensus</p>
@@ -2764,10 +2538,8 @@ async fn web_dashboard() -> Html<String> {
             </p>
         </footer>
     </div>
-
     <script>
         const API = window.location.origin;
-
         async function fetchJSON(endpoint, options) {
             try {
                 const res = await fetch(API + endpoint, options);
@@ -2778,14 +2550,12 @@ async fn web_dashboard() -> Html<String> {
                 return { error: e.message }; 
             }
         }
-
         function showResult(data, isError, targetId) {
             const div = document.getElementById(targetId || 'action-result');
             div.style.display = 'block';
             div.className = isError ? 'result error' : 'result';
             div.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
         }
-
         function formatUptime(secs) {
             if (secs < 60) return secs + 's';
             if (secs < 3600) return Math.floor(secs/60) + 'm ' + (secs%60) + 's';
@@ -2793,11 +2563,7 @@ async fn web_dashboard() -> Html<String> {
             const m = Math.floor((secs%3600)/60);
             return h + 'h ' + m + 'm';
         }
-
-        function formatNumber(num) {
-            return num.toLocaleString();
-        }
-
+        function formatNumber(num) { return num.toLocaleString(); }
         async function updateHealth() {
             const health = await fetchJSON('/health');
             if (health && !health.error) {
@@ -2805,7 +2571,6 @@ async fn web_dashboard() -> Html<String> {
                 const mainIndicator = document.getElementById('main-indicator');
                 const status = document.getElementById('health-status');
                 const uptime = document.getElementById('uptime');
-                
                 if (health.status === 'healthy') {
                     indicator.className = 'health-indicator';
                     mainIndicator.className = 'health-indicator';
@@ -2817,25 +2582,16 @@ async fn web_dashboard() -> Html<String> {
                     status.textContent = 'System Degraded';
                     status.className = 'warning';
                 }
-                
                 uptime.textContent = formatUptime(health.uptime_secs);
-                
-                // Update individual checks
-                document.getElementById('check-blockchain').className = 
-                    health.checks.blockchain ? 'health-check-icon' : 'health-check-icon failed';
-                document.getElementById('check-learner').className = 
-                    health.checks.learner ? 'health-check-icon' : 'health-check-icon failed';
-                document.getElementById('check-network').className = 
-                    health.checks.network ? 'health-check-icon' : 'health-check-icon failed';
-                document.getElementById('check-autolearn').className = 
-                    health.checks.auto_learning ? 'health-check-icon' : 'health-check-icon failed';
+                document.getElementById('check-blockchain').className = health.checks.blockchain ? 'health-check-icon' : 'health-check-icon failed';
+                document.getElementById('check-learner').className = health.checks.learner ? 'health-check-icon' : 'health-check-icon failed';
+                document.getElementById('check-network').className = health.checks.network ? 'health-check-icon' : 'health-check-icon failed';
+                document.getElementById('check-autolearn').className = health.checks.auto_learning ? 'health-check-icon' : 'health-check-icon failed';
             }
         }
-
         async function updateStats() {
             const stats = await fetchJSON('/stats/summary');
             if (stats && !stats.error) {
-                // Blockchain
                 document.getElementById('height').textContent = formatNumber(stats.blockchain.height);
                 document.getElementById('height').className = 'success';
                 document.getElementById('minted').textContent = stats.blockchain.total_minted_hafa.toFixed(2) + ' HAFA';
@@ -2844,8 +2600,6 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('reward').className = 'success';
                 document.getElementById('blocks-mined').textContent = formatNumber(stats.blockchain.height);
                 document.getElementById('total-supply').textContent = '210M';
-                
-                // AI
                 document.getElementById('params').textContent = formatNumber(stats.ai.model_parameters);
                 document.getElementById('params').className = 'success';
                 document.getElementById('buffer').textContent = stats.ai.buffer_size;
@@ -2854,41 +2608,32 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('learning').className = 'success';
                 document.getElementById('cycles').textContent = formatNumber(stats.ai.total_cycles);
                 document.getElementById('samples').textContent = formatNumber(stats.ai.total_samples_learned);
-                
-                // Network
                 document.getElementById('peer').textContent = stats.network.peer_id.substring(0, 20) + '...';
                 document.getElementById('peer').className = 'success';
                 document.getElementById('running').textContent = stats.network.is_running ? '✅ Running' : '❌ Stopped';
                 document.getElementById('running').className = 'success';
                 document.getElementById('addresses').textContent = stats.network.listening_addresses.length + ' addresses';
                 document.getElementById('addresses').className = 'success';
-                
-                // Wallet
                 document.getElementById('wallets').textContent = stats.wallet.total_wallets;
                 document.getElementById('wallets').className = 'success';
             }
         }
-
         async function refreshData() {
             await updateHealth();
             await updateStats();
-            
             const info = await fetchJSON('/info');
             if (info && !info.error) {
                 document.getElementById('uptime').textContent = formatUptime(info.uptime_secs);
             }
-
             const learn = await fetchJSON('/learning-status');
             if (learn && !learn.error) {
                 document.getElementById('params').textContent = formatNumber(learn.total_parameters);
             }
-
             const auto = await fetchJSON('/auto-learn/status');
             if (auto && !auto.error) {
                 document.getElementById('buffer').textContent = auto.buffer_size;
                 document.getElementById('learning').textContent = auto.is_learning ? '✅ Active' : '⏸️ Idle';
             }
-
             const gpu = await fetchJSON('/gpu/info');
             if (gpu && !gpu.error) {
                 document.getElementById('backend').textContent = gpu.backend;
@@ -2900,7 +2645,6 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('compute-units').textContent = gpu.compute_units;
                 document.getElementById('memory').textContent = gpu.memory_mb || 'N/A';
             }
-
             const fed = await fetchJSON('/federated/stats');
             if (fed && !fed.error) {
                 document.getElementById('pool').textContent = fed.pool_size;
@@ -2910,7 +2654,6 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('oldest').textContent = fed.oldest_item_age_secs ? fed.oldest_item_age_secs + 's ago' : 'N/A';
                 document.getElementById('oldest').className = 'success';
             }
-
             const kg = await fetchJSON('/knowledge/stats');
             if (kg && !kg.error) {
                 document.getElementById('entities').textContent = kg.total_entities;
@@ -2921,12 +2664,10 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('relation-confidence').textContent = (kg.avg_relation_confidence * 100).toFixed(1) + '%';
             }
         }
-
         async function createWallet() {
             const passphrase = prompt('Enter a strong passphrase for your new wallet:');
             if (!passphrase) return;
             const label = prompt('Optional label for this wallet:');
-            
             showResult('Creating wallet...', false, 'wallet-result');
             const data = await fetchJSON('/wallet/create', {
                 method: 'POST',
@@ -2936,24 +2677,18 @@ async fn web_dashboard() -> Html<String> {
             showResult(data, data.error, 'wallet-result');
             setTimeout(refreshData, 500);
         }
-
         async function listWallets() {
             showResult('Loading wallets...', false, 'wallet-result');
             const data = await fetchJSON('/wallet/list');
             showResult(data, data.error, 'wallet-result');
         }
-
         async function checkBalance() {
             const address = document.getElementById('wallet-address').value.trim();
-            if (!address) {
-                alert('Please enter a wallet address');
-                return;
-            }
+            if (!address) { alert('Please enter a wallet address'); return; }
             showResult('Checking balance...', false, 'wallet-result');
             const data = await fetchJSON('/wallet/info?address=' + encodeURIComponent(address));
             showResult(data, data.error, 'wallet-result');
         }
-
         async function testFederated() {
             showResult('Sending sample to federated pool...', false);
             const data = await fetchJSON('/federated/share', {
@@ -2961,15 +2696,12 @@ async fn web_dashboard() -> Html<String> {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     text: 'HAFA Web UI test at ' + new Date().toISOString(), 
-                    source: 'web_ui', 
-                    confidence: 0.95, 
-                    peer_id: 'browser' 
+                    source: 'web_ui', confidence: 0.95, peer_id: 'browser' 
                 })
             });
             showResult(data, data.error);
             setTimeout(refreshData, 500);
         }
-
         async function trainModel() {
             showResult('Training model (this may take a few seconds)...', false);
             const data = await fetchJSON('/train-text-v4', {
@@ -2977,13 +2709,11 @@ async fn web_dashboard() -> Html<String> {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     text: 'HAFA is a revolutionary decentralized AI blockchain with GPU acceleration and federated learning capabilities', 
-                    context_size: 8,
-                    epochs: 5
+                    context_size: 8, epochs: 5
                 })
             });
             showResult(data, data.error);
         }
-
         async function queryKnowledge() {
             const query = prompt('Enter your query:', 'What is HAFA?');
             if (!query) return;
@@ -2995,7 +2725,6 @@ async fn web_dashboard() -> Html<String> {
             });
             showResult(data, data.error);
         }
-
         async function showVersion() {
             showResult('Loading version info...', false);
             const data = await fetchJSON('/version');
@@ -3004,8 +2733,6 @@ async fn web_dashboard() -> Html<String> {
                 document.getElementById('version-badge').textContent = 'v' + data.version;
             }
         }
-
-        // Auto-refresh every 5 seconds
         setInterval(refreshData, 5000);
         refreshData();
     </script>
@@ -3153,6 +2880,7 @@ async fn wallet_delete(
         }),
     }
 }
+
 // ============================================================================
 // HEALTH & STATS HANDLERS
 // ============================================================================
@@ -3176,11 +2904,10 @@ async fn health_check(State(state): State<AppState>) -> Json<HealthResponse> {
     };
     
     let auto_learning_ok = {
-    let engine = state.auto_learning.read().await;
-    // Check if engine is accessible and properly initialized
-    let _ = engine.buffer_size(); // Just verify we can read it
-    true
-};
+        let engine = state.auto_learning.read().await;
+        let _ = engine.buffer_size();
+        true
+    };
     
     let all_healthy = blockchain_ok && learner_ok && network_ok && auto_learning_ok;
     
@@ -3198,7 +2925,6 @@ async fn health_check(State(state): State<AppState>) -> Json<HealthResponse> {
 }
 
 async fn stats_summary(State(state): State<AppState>) -> Json<StatsSummaryResponse> {
-    // Blockchain stats
     let blockchain = {
         let bc = state.blockchain.read().await;
         let height = bc.get_chain_height().await;
@@ -3214,7 +2940,6 @@ async fn stats_summary(State(state): State<AppState>) -> Json<StatsSummaryRespon
         }
     };
     
-    // AI stats
     let ai = {
         let learner = state.learner.read().await;
         let stats = learner.get_stats();
@@ -3231,7 +2956,6 @@ async fn stats_summary(State(state): State<AppState>) -> Json<StatsSummaryRespon
         }
     };
     
-    // Network stats
     let network = {
         let (peer_id, is_running, listening_addresses) = match &state.learning_network {
             Some(net) => (
@@ -3252,7 +2976,6 @@ async fn stats_summary(State(state): State<AppState>) -> Json<StatsSummaryRespon
         }
     };
     
-    // Wallet stats
     let wallet = {
         let manager = state.wallet_manager.lock().await;
         WalletStats {
@@ -3272,7 +2995,7 @@ async fn stats_summary(State(state): State<AppState>) -> Json<StatsSummaryRespon
 async fn version_info() -> Json<VersionResponse> {
     Json(VersionResponse {
         version: "5.1.0".to_string(),
-        build_date: "2026-01-15".to_string(), // Update this when you build
+        build_date: "2026-01-15".to_string(),
         rust_version: "1.70+".to_string(),
         protocol: "HAFA-v1".to_string(),
         features: vec![
@@ -3283,6 +3006,7 @@ async fn version_info() -> Json<VersionResponse> {
             "GPU-Acceleration".to_string(),
             "Wallet-System".to_string(),
             "Auto-Learning".to_string(),
+            "Web-Data-Sources".to_string(),
         ],
     })
 }

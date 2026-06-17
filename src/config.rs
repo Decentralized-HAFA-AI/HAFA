@@ -276,8 +276,8 @@ impl Default for Config {
                 connection_timeout_secs: 30,
             },
             learning: LearningConfig {
-                allow_internet_learning: false,
-                require_epistemic_validation: true,
+  allow_internet_learning: true,
+                  require_epistemic_validation: true,
                 min_confidence_threshold: 0.85,
                 trusted_sources_only: true,
             },

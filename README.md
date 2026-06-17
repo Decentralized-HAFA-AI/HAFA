@@ -4,6 +4,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Tests](https://img.shields.io/badge/Tests-184_Passing-brightgreen)
 ![Status](https://img.shields.io/badge/Status-Active_Success-brightgreen)
+![AI](https://img.shields.io/badge/AI-Native_Self_Evolving-blue)
 
 **H**orizon **A**fter **F**reedom **A**chieved
 
@@ -19,6 +20,60 @@ HAFA introduces a novel consensus mechanism called **Proof of Useful Cognitive W
 
 ---
 
+## 🌟 Vision: The Self-Evolving Ecosystem
+
+HAFA isn't just another blockchain or AI project. It's a **living ecosystem** designed to evolve in ways that traditional systems cannot.
+
+### The Core Philosophy
+
+**"The Node is the foundation. The Client is the evolution."**
+
+We believe in a **layered approach to AI evolution**:
+
+```
+┌─────────────────────────────────────────┐
+│  Layer 4: Self-Modifying Clients        │
+│  Clients that rewrite their own code    │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│  Layer 3: Code-Generating Clients       │
+│  Clients that build new modules         │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│  Layer 2: Evolving Clients              │
+│  Clients that improve their own UI      │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│  Layer 1: Learning Nodes (HAFA Core)    │
+│  Stable, secure, consensus-driven       │
+└─────────────────────────────────────────┘
+```
+
+### Why This Architecture?
+
+**Security First:** The HAFA Node (Layer 1) remains **stable, audited, and consensus-secure**. It learns through weight updates but never modifies its own core code. This ensures:
+- ✅ Network stability
+- ✅ Predictable consensus behavior
+- ✅ Security guarantees
+- ✅ Backward compatibility
+
+**Rapid Innovation:** Clients (Layers 2-4) can evolve **independently and rapidly**:
+- 🚀 Desktop clients can add new features daily
+- 📱 Mobile clients can optimize for user experience
+- 🎨 Smart clients can self-improve their UI
+- 🤖 Research clients can experiment with self-modification
+
+**User Sovereignty:** Every user can run the client that fits their needs:
+- **Basic users**: Simple desktop client with mining
+- **Power users**: CLI client with full control
+- **AI enthusiasts**: Smart client that evolves
+- **Researchers**: Experimental client with self-modification
+
+---
+
 ## ✨ Features
 
 ### 🔧 Core Architecture
@@ -27,6 +82,7 @@ HAFA introduces a novel consensus mechanism called **Proof of Useful Cognitive W
 - **Knowledge Graph**: Structured long-term memory with NLP extraction
 - **Reasoning Engine**: Query and inference over knowledge graph
 - **Epistemic Filtering**: Multi-axis validation for data ingestion
+- **WebDataSource**: Learn from internet sources (RSS, Wikipedia, Arxiv)
 
 ### 🌐 Network & Consensus
 - **Proof of Useful Cognitive Work (PoUCW)**: Quality-adjusted rewards based on learning improvement
@@ -43,8 +99,213 @@ HAFA introduces a novel consensus mechanism called **Proof of Useful Cognitive W
 ### 🎮 Performance & UI
 - **GPU Acceleration**: WGPU backend with CPU fallback
 - **Web UI Dashboard**: Real-time monitoring and control
-- **51+ API Endpoints**: Comprehensive REST API
+- **54+ API Endpoints**: Comprehensive REST API
 - **Zero Warnings**: Production-grade code quality
+- **Health Monitoring**: Real-time system health checks
+
+---
+
+## 🧬 Self-Evolution: 4 Levels of Intelligence
+
+HAFA implements a **pragmatic approach** to AI self-evolution, recognizing that true self-modification requires careful architectural separation.
+
+### Level 1: Weight Learning ✅ (Current)
+
+**What it does:**
+- Updates neural network weights from new data
+- Expands Knowledge Graph with new entities and relations
+- Builds Episodic Memory from experiences
+- Learns from internet sources (RSS, Wikipedia, Arxiv)
+
+**Example:**
+```
+Before: Doesn't know about "quantum computing"
+After:  Learned from Arxiv papers, added to Knowledge Graph
+        Can now answer questions about quantum algorithms
+```
+
+**Status:** ✅ Fully implemented and operational
+
+---
+
+### Level 2: Architecture Evolution 🟡 (Planned - 6 months)
+
+**What it does:**
+- Neural Architecture Search (NAS)
+- Dynamic layer addition based on performance
+- Hyperparameter optimization
+- Performance-driven architecture selection
+
+**Example:**
+```
+Model detects: "Learning has plateaued with 3 layers"
+Action: Adds a 4th layer automatically
+Result: 15% improvement in prediction accuracy
+```
+
+**Target:** 6 months
+
+---
+
+### Level 3: Code Generation 🟠 (Future - 1-2 years)
+
+**What it does:**
+- Generates new client modules
+- Creates plugins in sandboxed environment
+- Writes and runs tests automatically
+- Injects successful modules into client
+
+**Example:**
+```
+User request: "I need a chart widget for mining stats"
+AI generates: React component + Rust backend
+Tests: All pass ✅
+Result: New widget added to client UI
+```
+
+**Target:** 1-2 years
+
+---
+
+### Level 4: Self-Modification 🔴 (Research - 2+ years)
+
+**What it does:**
+- Rewrites client architecture
+- Autonomous UI evolution
+- Self-healing capabilities
+- Experimental features
+
+**Example:**
+```
+Client analyzes: "Users spend 80% of time in mining tab"
+Action: Redesigns entire UI to prioritize mining
+Result: 40% increase in user engagement
+```
+
+**Target:** 2+ years (requires fundamental AI research)
+
+---
+
+### Why Not Self-Modification in the Node?
+
+**Security concerns:**
+- ❌ Core node code must remain **stable and auditable**
+- ❌ Consensus mechanisms cannot be unpredictable
+- ❌ Network stability is paramount
+- ❌ Security vulnerabilities could be catastrophic
+
+**Practical solution:**
+- ✅ Node stays **fixed and secure** (Layer 1)
+- ✅ Clients evolve **independently** (Layers 2-4)
+- ✅ Users choose their evolution level
+- ✅ Innovation happens at the edge, not the core
+
+---
+
+## 🖥️ Client Ecosystem: Choose Your Evolution
+
+HAFA supports a **diverse ecosystem of clients**, each serving different needs and evolution levels.
+
+### Official Clients
+
+#### 🖥️ HAFA Desktop (Basic)
+- **Target:** General users
+- **Features:**
+  - Chat with HAFA AI
+  - Background mining widget
+  - Wallet management
+  - Real-time stats
+- **Evolution Level:** 1 (Learning only)
+- **Tech Stack:** Tauri + React
+
+#### 📱 HAFA Mobile (Basic)
+- **Target:** Mobile users
+- **Features:**
+  - Wallet on-the-go
+  - Mining status monitoring
+  - Push notifications
+- **Evolution Level:** 1
+- **Tech Stack:** React Native
+
+#### 🌐 HAFA Web (Basic)
+- **Target:** Browser users
+- **Features:**
+  - Full dashboard
+  - No installation required
+  - Quick access
+- **Evolution Level:** 1
+- **Tech Stack:** React + TypeScript
+
+---
+
+### Smart Clients (Advanced)
+
+#### 🤖 HAFA Smart Client
+- **Target:** AI enthusiasts
+- **Features:**
+  - All Desktop features
+  - **Self-improving UI** (Level 2)
+  - Personalization engine
+  - Behavior analysis
+  - Automatic feature addition
+- **Evolution Level:** 2 (Architecture Evolution)
+- **Example:** Client notices you use dark mode → automatically optimizes all UI for dark theme
+
+#### 🔬 HAFA Research Client
+- **Target:** Researchers & developers
+- **Features:**
+  - All Smart Client features
+  - **Code generation** (Level 3)
+  - Plugin system
+  - Sandbox execution
+  - Experimental features
+- **Evolution Level:** 3 (Code Generation)
+- **Example:** You say "Create a mining profitability calculator" → AI generates and injects the module
+
+#### 🧪 HAFA Experimental Client
+- **Target:** Cutting-edge researchers
+- **Features:**
+  - All Research Client features
+  - **Self-modification** (Level 4)
+  - Autonomous evolution
+  - Architecture redesign
+- **Evolution Level:** 4 (Self-Modification)
+- **Warning:** Experimental, may be unstable
+- **Example:** Client completely redesigns itself based on usage patterns
+
+---
+
+### Community Clients
+
+The beauty of HAFA's architecture is that **anyone can build their own client**:
+
+```rust
+// Example: Minimal HAFA client
+use hafa_client::HafaClient;
+
+#[tokio::main]
+async fn main() {
+    let client = HafaClient::connect("http://localhost:7476").await?;
+    
+    // Mine in background
+    client.start_miner().await;
+    
+    // Chat with AI
+    let response = client.chat("What is HAFA?").await?;
+    println!("{}", response);
+    
+    // Check balance
+    let balance = client.get_balance().await?;
+    println!("Balance: {} HAFA", balance);
+}
+```
+
+**Client ideas:**
+- 🎮 Gaming client (mine while playing)
+- 📊 Analytics client (advanced dashboards)
+- 🤝 Social client (share knowledge with friends)
+- 🎨 Creative client (AI-assisted art generation)
+- 📚 Educational client (learn blockchain concepts)
 
 ---
 
@@ -89,6 +350,7 @@ You should see:
    🌐 Learning Network started on port 7474 ✨
    💼 Wallet Manager initialized (Ed25519 + ChaCha20 encryption) ✨
    🎨 Web UI Dashboard: http://127.0.0.1:7476/web ✨
+   🌐 Web Data Sources registered (Internet learning enabled) ✨
    
    ✅ Node is alive. Press Ctrl+C to stop.
 ```
@@ -126,10 +388,24 @@ You'll see a real-time dashboard showing:
 - Knowledge graph metrics
 - P2P network information
 - Wallet management
+- System health status
 
 ---
 
 ## 📡 API Reference
+
+### Health & Stats Endpoints (New!)
+
+```bash
+# Health check
+curl http://127.0.0.1:7476/health
+
+# System summary
+curl http://127.0.0.1:7476/stats/summary
+
+# Version info
+curl http://127.0.0.1:7476/version
+```
 
 ### Blockchain Endpoints
 
@@ -315,7 +591,7 @@ enable_kademlia = true
 connection_timeout_secs = 30
 
 [learning]
-allow_internet_learning = false
+allow_internet_learning = true
 require_epistemic_validation = true
 min_confidence_threshold = 0.85
 trusted_sources_only = true
@@ -410,8 +686,8 @@ cargo test wallet
 
 ### Test Coverage
 
-- **169 Unit Tests**: All passing ✅
-- **Module Coverage**: blockchain, crypto, config, api, data_source, epistemic, evolution, learning, network
+- **184 Unit Tests**: All passing ✅
+- **Module Coverage**: blockchain, crypto, config, api, data_source, epistemic, evolution, learning, network, wallet
 - **Zero Warnings**: Production-grade code quality
 
 ---
@@ -540,6 +816,7 @@ cargo run
 - **Performance**: Optimize algorithms, add GPU acceleration
 - **Documentation**: Improve guides, add tutorials
 - **Testing**: Add more test cases, improve coverage
+- **Client Development**: Build Desktop, Mobile, or Smart clients
 
 ---
 
@@ -551,39 +828,58 @@ cargo run
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Evolution Roadmap
 
-### Phase 1: Genesis (✅ Complete)
+### Phase 1: Foundation ✅ (Complete)
 - [x] Core blockchain implementation
-- [x] Native AI engine (MLP)
-- [x] Basic P2P network
-- [x] Wallet system
+- [x] Native AI engine (MLP, Transformer v3/v4)
+- [x] P2P network with libp2p
+- [x] Wallet system with Ed25519
+- [x] Knowledge Graph & Reasoning Engine
+- [x] Auto-Learning Engine
+- [x] Web UI Dashboard
+- [x] 184 unit tests
+- [x] WebDataSource (internet learning)
+- [x] Health & Stats endpoints
 
-### Phase 2: Evolution (✅ Complete)
-- [x] Transformer v3 & v4
-- [x] Knowledge graph
-- [x] Reasoning engine
-- [x] Auto-learning engine
-- [x] GPU acceleration
+### Phase 2: Client Ecosystem 🚧 (In Progress - 6 months)
+- [ ] HAFA Desktop Client (Tauri + React)
+- [ ] HAFA Mobile Client (React Native)
+- [ ] Client SDK for community developers
+- [ ] Plugin architecture
+- [ ] Basic chat interface
+- [ ] Background mining widget
 
-### Phase 3: Production (✅ Complete)
-- [x] Web UI dashboard
-- [x] Federated learning
-- [x] Epistemic filtering
-- [x] Verifiable proofs
-- [x] 169 unit tests
+### Phase 3: Smart Clients 🟡 (Planned - 1 year)
+- [ ] Level 2: Architecture Evolution
+- [ ] Neural Architecture Search (NAS)
+- [ ] Dynamic UI optimization
+- [ ] Personalization engine
+- [ ] User behavior analysis
+- [ ] Self-improving interfaces
 
-### Phase 4: Ecosystem (🚧 In Progress)
-- [ ] Mobile wallets
-- [ ] Block explorer
-- [ ] Developer SDK
-- [ ] Mainnet launch
+### Phase 4: Code Generation 🟠 (Future - 2 years)
+- [ ] Level 3: Code Generation
+- [ ] AI-powered module creation
+- [ ] Sandbox execution environment
+- [ ] Automated testing
+- [ ] Plugin marketplace
+- [ ] Community contributions
 
-### Phase 5: Advanced (📋 Planned)
-- [ ] Zero-knowledge proofs
-- [ ] Sharding
-- [ ] Cross-chain bridges
-- [ ] DAO governance
+### Phase 5: Self-Modification 🔴 (Research - 3+ years)
+- [ ] Level 4: Self-Modification
+- [ ] Autonomous client evolution
+- [ ] Self-healing capabilities
+- [ ] Fundamental AI research
+- [ ] Safety & alignment research
+
+### Phase 6: Mass Adoption 🌍 (Vision - 5+ years)
+- [ ] 10,000+ active nodes
+- [ ] Listed on major exchanges
+- [ ] Mobile apps on App Store/Play Store
+- [ ] Enterprise solutions
+- [ ] Academic partnerships
+- [ ] Global community
 
 ---
 
@@ -622,7 +918,7 @@ If you find HAFA interesting, please consider giving us a star on GitHub! It hel
 
 Made with 🦀 Rust | Powered by 🧠 Native AI | Secured by 🔐 Cryptography
 
+**The Node is the foundation. The Client is the evolution.** 🚀
+
 </div>
 ```
-
----
